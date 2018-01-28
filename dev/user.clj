@@ -1,11 +1,9 @@
 (ns user
-  (:require [blox-machina.blocks :as b]
-            [com.stuartsierra.component :as component]
+  (:require [com.stuartsierra.component :as component]
             [figwheel-sidecar.repl-api :as f]
-            system))
+            [blox-machina-demo.system :as system]))
 
-(defonce *chain (atom (b/chain-contents :gen 1 2)))
-(defonce system (system/make-system *chain))
+(defonce system (system/make-system))
 
 (defn start! []
   (alter-var-root #'system component/start))
@@ -15,7 +13,7 @@
 
 (defn reset! []
   (stop!)
-  (alter-var-root #'system (constantly (system/make-system *chain))))
+  (alter-var-root #'system (constantly (system/make-system))))
 
 (defn restart! []
   (stop!)

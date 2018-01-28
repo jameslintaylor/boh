@@ -107,7 +107,7 @@ would be cumbersome.
 
 ** Reflections
 
-When a projection is, /ahem/ isomorphic to the chain and should be
-kept in sync with it, Let is thus forth be named a *reflection*. A
-reflection should be set up in such a way that changes to the
-reflection propagate changes to the chain.
+When a projection is mutable and should be kept in sync
+bidirectionally with the chain, Let is from thus forth be named a
+*reflection*. A reflection should be set up in such a way that changes
+to the reflection propagate changes to the chain.

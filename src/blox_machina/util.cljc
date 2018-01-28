@@ -1,17 +1,32 @@
 (ns blox-machina.util
   (:require taoensso.sente.interfaces
-            [blox-machina.blocks :as b]
-            [datascript.core :as d]
             #?(:clj [clojure.tools.reader.edn :as edn]
-               :cljs [cljs.tools.reader.edn :as edn])))
-
-(def data-readers (merge d/data-readers
-                         {'blox-machina.blocks.Block b/map->Block
-                          'blox_machina.blocks.Block b/map->Block}))
+               :cljs [cljs.tools.reader.edn :as edn])
+            #?(:clj pandect.algo.sha1
+               :cljs goog.crypt))
+  #?(:cljs (:import goog.crypt.Sha1)))
 
 (deftype EdnPacker [opts]
   taoensso.sente.interfaces/IPacker
   (pack [_ x] (pr-str x))
   (unpack [_ s] (edn/read-string opts s)))
 
-(def packer (EdnPacker. {:readers data-readers}))
+(defn edn-packer [opts]
+  (EdnPacker. opts))
+
+(def sha1
+  #?(:clj pandect.algo.sha1/sha1
+     :cljs (fn [s]
+             (let [inst (goog.crypt.Sha1.)
+                   bs (goog.crypt/stringToUtf8ByteArray s)]
+               (.update inst bs)
+               (goog.crypt/byteArrayToHex (.digest inst))))))
+
+(defn concat-sha1
+  "Concatenates the stringified clojure data and returns it's sha1
+  hash."
+  [& xs]
+  (->> (map pr-str xs)
+       (apply str)
+       sha1
+       keyword))
