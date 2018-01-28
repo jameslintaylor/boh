@@ -74,10 +74,10 @@ single block, hence the reasoning for ~:client/push-blocks~ instead of
 
 ** Websocket events
 
-*** Server pushed blocks
+*** Origin pushed blocks
 
 #+BEGIN_SRC clojure results silent
-  {:id :server/push-blocks :data {:blocks [...]}}
+  {:id :origin/push-blocks :data {:blocks [...]}}
 #+END_SRC
 
 The client should check the base of the ~:blocks~ to ensure that it is
@@ -89,14 +89,25 @@ the base of the local chain. If the client's local chain is non empty,
 it is rebased onto the new head and the client continues in its
 attempt to push those blocks to the origin.
 
-* Tags
+* Projections
 
 Commonly, the sequence of data obtained by traversing the blocks in a
-chain is used to build some aggregate data. For example, if the block
-~data~ were numbers, the aggregate could be the sum.
+chain is used to build some aggregate data. For instance, if the block
+~data~ were numbers, the aggregate could be the product. Moving
+forward, we will call this aggregation of the data a *projection*. 
 
-As such, it may be useful for the client to store versions of this
-aggregate data at different states in the chain. This can be done to
-yield some performance improvements. Commonly this involves storing at
-least 2 tags, the genesis (usually "empty") state, and the state as of
-the last branch from origin.
+** Tagging
+
+Often for performance reasons, it may be useful for the client to
+store versions of the projection at different states in the chain.
+Commonly this involves storing at least 2 tags, the genesis (usually
+"empty") state, and the state as of the last branch from origin. When
+chains get very long and building the projection from the scratch
+would be cumbersome.
+
+** Reflections
+
+When a projection is, /ahem/ isomorphic to the chain and should be
+kept in sync with it, Let is thus forth be named a *reflection*. A
+reflection should be set up in such a way that changes to the
+reflection propagate changes to the chain.
