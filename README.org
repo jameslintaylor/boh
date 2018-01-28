@@ -1,0 +1,59 @@
+* Blocks
+
+A Block consists of:
+- ~prev-block~
+- ~data~
+- ~hash~
+
+~prev-block~ refers to the hash of the previous block in the chain
+~hash~ is the hash of the concatenation of ~prev-block~ and ~data~
+
+* Tags
+
+Commonly, the sequence of data obtained by traversing the blocks in a
+chain is used to build some aggregate data. For example, if the block
+~data~ were numbers, the aggregate could be the sum.
+
+As such, it may be useful for the client to store versions of this
+aggregate data at different states in the chain. This can be done to
+yield some performance improvements. Commonly this involves storing at
+least 2 tags, the genesis (usually "empty") state, and the state as of
+the last branch from origin.
+
+* Sync
+
+** Origin
+
+The server/origin's responsibility entail accepting new connections
+from clients and keeping those clients up to date with the origin
+chain. All communication is done over a TCP socket, the spec of which
+follows:
+
+*** Events pushed to server from client
+
+**** pushing blocks 
+
+#+BEGIN_SRC clojure results silent
+  {:id :client/push-blocks :data {:blocks [...]}}
+#+END_SRC
+
+The origin should check the base of the ~:blocks~, if it is the same
+as the head of the current origin chain, respond simply with the new
+(confirmed) head of the origin chain: ~{:head hash}~
+
+If the base of ~:blocks~ is different, rebase the pushed blocks onto
+head of origin chain and respond with the rebased push: ~{:head
+hash :rebased-blocks [...]}~
+
+Here we are favouring some server computation over extra network
+overhead (ie. if the server instead refused to accept the dangling
+blocks and instead asked the client to pull before pushing).
+
+**** pulling blocks 
+
+#+BEGIN_SRC clojure results silent
+  {:id :client/pull-blocks :data {:base :{hash}}}
+#+END_SRC
+
+The origin should respond with the blocks since ~:{hash}~. Commonly
+new clients will request all blocks in the chain ie: ~{:base :gen}~
