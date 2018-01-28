@@ -63,7 +63,6 @@ The client's chain is broken up into 2 chains: the ~origin-chain~ and the
   known to the origin. It represents the client's "branching" from the
   origin chain.
 
-#+begin_verse
 *Implementation detail* - Whenever a block is put onto the local
 chain, it should be pushed immediately to the server, unless there is
 an outbound push still awaiting response (maybe network problems). If
@@ -72,7 +71,6 @@ local chain until the outbound buffer is cleared. This represents the
 only situation in which a client may push multiple blocks instead of a
 single block, hence the reasoning for ~:client/push-blocks~ instead of
 ~:client/push-block~.
-#+end_verse
 
 ** Websocket events
 
