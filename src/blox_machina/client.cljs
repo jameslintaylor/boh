@@ -1,28 +1,9 @@
 (ns blox-machina.client
-  (:require [blox-machina.util :as util]
+  (:require [blox-machina.util :refer [edn-packer callback-chan! pipe]]
             [cljs.core.async :as a]
             [taoensso.sente :as sente]
             [blox-machina.blocks :as b])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
-
-(defn make-chsk! [path opts]
-  (sente/make-channel-socket-client! path (assoc opts :packer util/packer)))
-
-(defn callback-chan!
-  "Takes a callback-consuming function and registers with it a callback
-  that passes on the values to the returned channel using an optional
-  packing function."
-  ([register-fn] (callback-chan! register-fn identity))
-  ([register-fn f]
-   (let [chan (a/chan)]
-     (register-fn (fn [& xs]
-                    (a/put! chan (apply f xs))))
-     chan)))
-
-(defn- pipe [in xf]
-  (let [out (a/chan)]
-    (a/pipeline 4 out xf in)
-    out))
 
 (defn- tag [id]
   (map (fn [x] [id x])))
@@ -69,7 +50,11 @@
     (sente/start-client-chsk-router! ch-recv injected-handler)
     push-ch))
 
-;; -reduce-push :: state -> push -> effect-map
+{:state {:blocks-local []
+         :blocks-origin []}
+ :effects [{:id :sync-server}]}
+
+;; -reduce-push :: state -> push -> (side effects) effect-map
 (defmulti -reduce-push (fn [_ push] (:source push)))
 
 (defmethod -reduce-push :origin
@@ -79,6 +64,8 @@
 
 (defmethod -reduce-push :local
   [{:keys [blocks]} state]
+  (let [[id data] (a/<! r-chan! (push-msg [blocks]))]
+    ())
   (println "push from local!")
   state)
 
@@ -87,8 +74,8 @@
   chain)
 
 ;; handle-push! :: chain-ref -> state -> push -> (side effects) new-state
-(defn handle-push! [*chain state push]
-  (let [effect-map (-reduce-push state push)]
+(defn handle-push! [*chain state r-chan! push]
+  (let [effect-map (-reduce-push! state push)]
     (swap! *chain apply-effect effect-map)
     (:state effect-map)))
 
@@ -105,7 +92,7 @@
     (go-loop [state {:blocks-origin @*chain
                      :blocks-local []}]
       (let [[[source blocks]] (a/alts! [origin-push-ch local-push-ch])
-            new-state (handle-push! *chain state {:source source :blocks blocks})]
+            new-state (handle-push! *chain r-chan! state {:source source :blocks blocks})]
         (recur new-state)))))
 
 (defn chain-with-origin!
@@ -127,3 +114,89 @@
          (recur)))
 
      *chain)))
+
+(defn make-chsk! [path opts]
+  (let [opts (assoc opts :packer (edn-packer {:readers b/data-readers}))]
+    (sente/make-channel-socket-client! path opts)))
+
+(defn make-buffered-send-fn [send-fn]
+  (let [*busy (atom false)
+        *queue (atom ())
+
+        wrapped-send (fn [data reply-fn]
+                       (reset! *busy true)
+                       (send-fn data 1000
+                                (fn [reply]
+                                  (println "got reply!")
+                                  (if (sente/cb-success? reply)
+                                    (do
+                                      (reply-fn reply)
+                                      (reset! *busy false))
+                                    (do
+                                      (println "network disconnect?")
+                                      (swap! *queue empty)
+                                      (reset! *busy false))))))
+
+        buffered-send (fn [data reply-fn]
+                        (println "invoked" data)
+                        (if @*busy
+                          (do
+                            (println "buffer is busy, queueing send.")
+                            (swap! *queue conj [data reply-fn]))
+                          (wrapped-send data reply-fn)))]
+
+    (add-watch *busy (rand-int 1000)
+               (fn [_ _ _ busy]
+                 (println "busy:" busy)
+                 (when-not (or busy (empty? @*queue))
+                   (println "sending queued")
+                   (apply buffered-send (first @*queue))
+                   (swap! *queue rest))))
+
+    buffered-send))
+
+(defn make-pair-client! [path opts]
+  (let [*chain-origin (atom (b/create-chain :gen))
+        *chain-local (atom (b/create-chain :gen))
+        {:keys [chsk ch-recv send-fn state]} (make-chsk! path opts)
+        buffered-send! (fn [data reply-fn] (send-fn data 1000 reply-fn)) #_(make-buffered-send-fn send-fn)]
+
+    ;; pull blocks whenever socket opens
+    (add-watch state :state-watch
+               (fn [_ _ _ state]
+                 (when (:open? state)
+                   (buffered-send!
+                    [:client/pull-blocks {:base (b/head @*chain-origin)}]
+                    (fn [{:keys [head blocks]}]
+                      (print (str "socket opened, got " (count blocks) " blocks!"))
+                      (swap! *chain-origin b/link blocks)
+                      (swap! *chain-local b/rebase head))))))
+
+    ;; watch local chain
+    (b/listen! *chain-local
+               (fn [chain new-blocks]
+                 (when (and (:open? @state)
+                            (not (empty? new-blocks)))
+                   (println "pushing" new-blocks)
+                   (buffered-send!
+                    [:client/push-blocks {:blocks new-blocks}]
+                    (fn [{:keys [head rebased-blocks]}]
+                      (if (= head (b/head new-blocks))
+                        (do
+                          (println "push succeeded!")
+                          (swap! *chain-origin b/link new-blocks)
+                          (swap! *chain-local
+                                 (fn [chain-local]
+                                   (-> chain-local
+                                       (b/chain-since head)
+                                       (with-meta {:base head})))))
+                        (do
+                          (println "push succeeded with rebase.")
+                          (swap! *chain-origin b/link rebased-blocks)
+                          (swap! *chain-local
+                                 (fn [chain-local]
+                                   (-> chain-local
+                                       (b/chain-since (b/head new-blocks))
+                                       (b/rebase head)))))))))))
+
+    [*chain-origin *chain-local]))

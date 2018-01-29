@@ -1,4 +1,4 @@
-(ns blox-machina.core
+(ns blox-machina-demo.core
     (:require [rum.core :as rum]))
 
 (enable-console-print!)
