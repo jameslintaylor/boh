@@ -21,7 +21,7 @@
   component/Lifecycle
 
   (start [this]
-    (println "dutifully starting server on port:" port)
+    (println "starting server on port" port)
     (assoc this :server (httpkit/run-server (make-handler (:chsk origin)) {:port port})))
 
   (stop [this]

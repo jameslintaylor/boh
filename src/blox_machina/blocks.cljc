@@ -56,30 +56,34 @@
           (recur (cons y t)))))))
 
 (defn chain-since [chain base]
-  (drop-while #(not= base (:prev-block %)) chain))
+  (-> (into [] (drop-while #(not= base (:prev-block %)) chain))
+      (with-meta {:base base})))
 
 (defn rebase [chain base]
   (apply create-chain base (map :data chain)))
 
-(defn link [chain blocks]
-  {:pre [(v/chain? blocks)
-         (= (head chain) (base blocks))]}
-  (into chain blocks))
+(defn link [& chains]
+  (let [[x y & t] chains]
+    (if (nil? y)
+      x
+      (recur (cons (into x y) t)))))
 
 (defn link-data
   [chain & data]
-  (let [blocks (apply chain-data (head chain) data)]
+  (let [blocks (apply create-chain (head chain) data)]
     (link chain blocks)))
 
 (defn delta [chain-from chain-to]
   (chain-since chain-to (head chain-from)))
 
 (defn listen!
+  "Listen for changes to a chain ref. The callback-fn should be a
+  2-arity function taking the value of the entire chain aswell as the
+  new blocks (delta). Note that if the ancestry changes, the delta is
+  empty. Returns a 0-arity function that unregisters the listener."
   [*chain callback-fn]
-  (add-watch *chain (rand-int 1000)
-             (fn [_ _ old new]
-               (if (= old new)
-                 (println "metadata changed")
-                 (if-not (ancestor? old new)
-                   (println "ancestry changed")
-                   (callback-fn new (diff old new)))))))
+  (let [key (rand-int 1000)]
+    (add-watch *chain key
+               (fn [_ _ old new]
+                 (callback-fn new (delta old new))))
+    (fn [] (remove-watch *chain key))))

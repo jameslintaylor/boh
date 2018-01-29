@@ -10,7 +10,7 @@
   (start [this]
     (let [*chain (atom (b/create-chain :gen))
           chsk (origin/make-chsk-origin! (get-sch-adapter) *chain)]
-      (println "starting origin with an empty chain")
+      (println (format "starting origin with a %d-block chain" (count @*chain)))
       (assoc this
              :*chain *chain
              :chsk chsk)))

@@ -18,21 +18,27 @@
   (let [chain @*chain
         blocks (:blocks ?data)]
 
-    (printf "client pushed %d blocks" (count blocks))
+    (print (format "client pushed %d blocks" (count blocks)))
 
     (if (b/consecutive? chain blocks)
 
-      (let [new-chain (swap! *chain into blocks)]
-        (?reply-fn {:head (b/head new-chain)})
-        (broadcast-fn [:origin/push-blocks {:blocks blocks}]
-                      :excluded-uids #{uid}))
+      (let [new-chain (swap! *chain b/link blocks)
+            head (b/head new-chain)]
+        (?reply-fn {:head head})
+        (broadcast-fn [:origin/push-blocks {:head head
+                                            :blocks blocks}]
+                      {:excluded-uids #{uid}}))
 
-      (let [rebased-blocks (b/rebase blocks (b/head chain))
-            new-chain (swap! *chain into rebased-blocks)]
-        (?reply-fn {:head (b/head new-chain)
+      (let [forward-blocks (b/chain-since chain (b/head blocks))
+            rebased-blocks (b/rebase blocks (b/head chain))
+            new-chain (swap! *chain b/link rebased-blocks)
+            head (b/head new-chain)]
+        (?reply-fn {:head head
+                    :forward-blocks forward-blocks
                     :rebased-blocks rebased-blocks})
-        (broadcast-fn [:origin/push-blocks {:blocks rebased-blocks}]
-                      :excluded-uids #{uid})))))
+        (broadcast-fn [:origin/push-blocks {:head head
+                                            :blocks rebased-blocks}]
+                      {:excluded-uids #{uid}})))))
 
 (defmethod -handle-event! :client/pull-blocks
   [{:keys [*chain ?data ?reply-fn]}]
