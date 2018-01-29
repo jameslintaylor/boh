@@ -76,7 +76,7 @@
 (defn delta [chain-from chain-to]
   (chain-since chain-to (head chain-from)))
 
-(defn listen!
+(defn ^{:style/indent 1} listen!
   "Listen for changes to a chain ref. The callback-fn should be a
   2-arity function taking the value of the entire chain aswell as the
   new blocks (delta). Note that if the ancestry changes, the delta is

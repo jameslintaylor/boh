@@ -1,6 +1,8 @@
 (ns user
   (:require [blox-machina-demo.system :as system]
             [blox-machina.blocks :as b]
+            [blox-machina.persistence :as persistence]
+            [blox-machina.verification :as verification]
             [com.stuartsierra.component :as component]
             [figwheel-sidecar.repl-api :as f]))
 

@@ -68,7 +68,6 @@
                  (when (and (:open? @state)
                             (not (empty? chain-local))
                             (not @*freeze-local?))
-                   (println "pushing" new-blocks)
                    (swap! *freeze-local? not)
                    (chsk-send!
                     [:client/push-blocks {:blocks chain-local}]
@@ -76,7 +75,6 @@
                       (swap! *freeze-local? not)
                       (if (= head (b/head new-blocks))
                         (do
-                          (println "push succeeded!")
                           (swap! *chain-origin b/link chain-local)
                           (swap! *chain-local
                                  (fn [chain-local]

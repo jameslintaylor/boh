@@ -18,8 +18,6 @@
   (let [chain @*chain
         blocks (:blocks ?data)]
 
-    (print (format "client pushed %d blocks" (count blocks)))
-
     (if (b/consecutive? chain blocks)
 
       (let [new-chain (swap! *chain b/link blocks)
