@@ -27,7 +27,7 @@
                                             :blocks blocks}]
                       {:excluded-uids #{uid}}))
 
-      (let [forward-blocks (b/chain-since chain (b/head blocks))
+      (let [forward-blocks (b/chain-since chain (b/base blocks))
             rebased-blocks (b/rebase blocks (b/head chain))
             new-chain (swap! *chain b/link rebased-blocks)
             head (b/head new-chain)]
