@@ -84,9 +84,9 @@
        [:font {:color "gray"} (str " " (:data (last chain-origin)))]]
       (if-not (empty? chain-local)
         [:div
-         [:font {:color "gray"} "local is at "]
+         [:font {:color "orange"} "local is at "]
          (take 8 (str (b/head chain-local)))
-         [:font {:color "gray"} (str " " (:data (last chain-local)))]])]
+         [:font {:color "orange"} (str " " (:data (last chain-local)))]])]
      [:div {:tab-index 0
            :on-key-down (comp push-local
                               event-for-key
