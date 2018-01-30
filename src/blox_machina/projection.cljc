@@ -14,7 +14,9 @@
   (let [*projection (atom (build-fn (build-fn) @*chain))]
     (b/listen! *chain
       (fn [_ delta]
-        (swap! *projection build-fn delta)))
+        (if ((comp :reflected? meta first) delta)
+          (println "reflected data, breaking loop")
+          (swap! *projection build-fn delta))))
     *projection))
 
 #?(:cljs
@@ -31,31 +33,12 @@
 
        *projection)))
 
-(defn- reflect-fn [*projection *chain]
-  (let [*footprint (atom 0)]
-    (fn [data]
-      (if (not= (:footprint (meta @*chain)) @*footprint)
-        (let [footprint (swap! *footprint inc)]
-          (swap! *chain #(-> (b/link-data % data)
-                             (with-meta {:footprint footprint}))))))))
-
-(defn ^{:style/indent 1} reflect!
-  [*projection *chain watch-fn]
-  (letfn [(maybe-push! [data]
-            (swap! *chain b/link-data data))]
-    (watch-fn *projection maybe-push!)))
-
-;; broken
-#_(defn create-reflection!
-  [*chain-origin *chain-local projector delta-fn]
-  (let [*footprint (atom -1)
-        *projection (create-projection! *chain-origin *chain-local projector)]
-    (add-watch *projection (rand-int 1000)
-               (fn [_ _ old new]
-                 (when (not= (:footprint (meta new)) @*footprint)
-                   (let [delta (delta-fn old new)
-                         footprint (reset! *footprint (rand-int 1000))]
-                     (swap! *chain-local #(-> %
-                                              (b/link-data delta)
-                                              (with-meta {:footprint footprint})))))))
-    *projection))
+(defn ^{:style/indent 1} setup-reflection!
+  [*projection watch-fn]
+  (letfn [(link-reflection! [chain data]
+            (if ((comp :projected? meta) chain)
+              (println "projected data, breaking loop")
+              (let [block (-> (b/create-block (b/head chain) data)
+                              (with-meta {:reflected? true}))]
+                (b/link chain [block]))))]
+    (watch-fn *projection link-reflection!)))

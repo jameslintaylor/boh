@@ -6,12 +6,23 @@
 
 (enable-console-print!)
 
+(defn string-split-at [n s]
+  [(subs s 0 n) (subs s n)])
+
+(defn string-insert [s sub offset]
+  (let [[lhs rhs] (string-split-at (- (count s) offset) s)]
+    (str lhs sub rhs)))
+
+(defn string-delete [s n offset]
+  (let [[lhs rhs] (string-split-at (- (count s) offset n) s)]
+    (str lhs (subs rhs n))))
+
 (def builder
   (p/reducing-builder ""
-    (fn [s [id data]]
+    (fn [s [id data offset]]
       (case id
-        :push (str s data)
-        :pop (subs s 0 (- (count s) data))))))
+        :insert (string-insert s data offset)
+        :delete (string-delete s data offset)))))
 
 (defn make-pair [] (client/make-pair-client! "origin" {:host "localhost:3001"}))
 
@@ -21,25 +32,35 @@
   (def *disconnect<- *disconnect<-)
   (def *disconnect-> *disconnect->)
   (def *projection (p/create-projection-client! *chain-origin *chain-local builder))
-  #_(p/reflect! *projection
-      (fn [*p push!]
-        (add-watch *p :rand
-                   (fn [_ _ old new]
-                     (push! (- new old)))))))
+  #_(p/setup-reflection! *projection
+                       (fn [*p reflect-fn]
+                         (add-watch *p :rand
+                                    (fn [_ _ _ _]
+                                      (swap! *chain-local reflect-fn [:push "reflect"]))))))
+
+(def *cursor-offset (atom 0 :validator (complement neg?)))
 
 (defn parse-key [event]
   (let [code (.-keyCode event)]
-    (if (= code 8)
-      :backspace
-      (char (.-keyCode event)))))
+    (case code
+      37 :left-arrow
+      39 :right-arrow
+      8 :backspace
+      (.fromCharCode js/String code))))
 
 (defn event-for-key [c]
-  (if (= c :backspace)
-    [:pop 1]
-    [:push c]))
+  (case c
+    :left-arrow [:cursor-left 1]
+    :right-arrow [:cursor-right 1]
+    :backspace [:delete 1 @*cursor-offset]
+    [:insert c @*cursor-offset]))
 
-(defn push-local [event]
-  (swap! *chain-local b/link-data event))
+(defn handle-keyboard-event! [event]
+  (let [[id data] event]
+    (case id
+      :cursor-left (swap! *cursor-offset #(+ % data))
+      :cursor-right (swap! *cursor-offset #(- % data))
+      (swap! *chain-local b/link-data event))))
 
 (rum/defc atom-toggle < rum/reactive
   [atom c-true c-false]
@@ -57,20 +78,19 @@
 (rum/defc line-through [c]
   [:div {:style {:text-decoration "line-through"}} c])
 
-(rum/defc input-field < rum/reactive []
-  (let [projection (rum/react *projection)]
-    [:div#input-field {:tab-index 0
-           :on-key-down (comp push-local
-                              event-for-key
-                              parse-key)
-           :style {:min-height "20px"
-                   :word-wrap "break-word"
-                   :border-style "dashed"
-                   :border-color "gray"
-                   :border-width "1px"
-                   :cursor "pointer"
-                   :outline 0}}
-     (str projection "\u2588")]))
+(rum/defc network-toggles []
+  [:div#network-toggles {:style {:position "absolute"
+                                 :right "10px"
+                                 :top "10px"
+                                 :float "left"}}
+   (atom-toggle *disconnect<- (line-through "network in") "network in")
+   [:text {:style {:display "inline block"
+                   :cursor "pointer"}
+           :on-click (fn []
+                       (swap! *disconnect<- not)
+                       (swap! *disconnect-> not))}
+    "/"]
+   (atom-toggle *disconnect->  (line-through "notwork out") "network out")])
 
 (rum/defc header < rum/reactive []
   (let [chain-origin (rum/react *chain-origin)
@@ -89,19 +109,33 @@
         (take 8 (str (b/head chain-local)))
         [:font {:color "orange"} (str " " (:data (last chain-local)))]])]))
 
-(rum/defc network-toggles []
-  [:div#network-toggles {:style {:position "absolute"
-                                 :right "10px"
-                                 :top "10px"
-                                 :float "left"}}
-   (atom-toggle *disconnect<- (line-through "network in") "network in")
-   [:text {:style {:display "inline block"
-                   :cursor "pointer"}
-           :on-click (fn []
-                       (swap! *disconnect<- not)
-                       (swap! *disconnect-> not))}
-    "/"]
-   (atom-toggle *disconnect->  (line-through "notwork out") "network out")])
+(defn with-cursor [s cursor-offset cursor-color]
+  (let [[lhs rhs] (split-at (- (count s) cursor-offset) s)]
+    [:text
+     lhs
+     [:font {:color cursor-color} "\u2588"]
+     (rest rhs)]))
+
+(rum/defcs input-field < rum/reactive
+                         (rum/local false ::focused?)
+  [state]
+  (let [projection (rum/react *projection)
+        cursor-offset (rum/react *cursor-offset)
+        *focused? (::focused? state)]
+    [:div#input-field {:tab-index 0
+                       :on-key-down (comp handle-keyboard-event!
+                                          event-for-key
+                                          parse-key)
+                       :on-focus (fn [] (reset! *focused? true))
+                       :on-blur (fn [] (reset! *focused? false))
+           :style {:min-height "20px"
+                   :word-wrap "break-word"
+                   :border-style "dashed"
+                   :border-color "gray"
+                   :border-width "1px"
+                   :cursor "pointer"
+                   :outline 0}}
+     (with-cursor projection cursor-offset (if @*focused? "white" "#444"))]))
 
 (rum/defc hello-world []
   [:div#hello
