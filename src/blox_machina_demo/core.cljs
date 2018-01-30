@@ -22,10 +22,10 @@
   (def *disconnect-> *disconnect->)
   (def *projection (p/create-projection-client! *chain-origin *chain-local builder))
   #_(p/reflect! *projection
-    (fn [*p push!]
-      (add-watch *p :rand
-                 (fn [_ _ old new]
-                   (push! (- new old)))))))
+      (fn [*p push!]
+        (add-watch *p :rand
+                   (fn [_ _ old new]
+                     (push! (- new old)))))))
 
 (defn parse-key [event]
   (let [code (.-keyCode event)]
@@ -57,49 +57,60 @@
 (rum/defc line-through [c]
   [:div {:style {:text-decoration "line-through"}} c])
 
-(rum/defc hello-world < rum/reactive []
-  (let [chain-origin (rum/react *chain-origin)
-        chain-local (rum/react *chain-local)
-        projection (rum/react *projection)]
-    [:div
-     [:div#network-toggles {:style {:position "absolute"
-                                    :right "10px"
-                                    :top "10px"
-                                    :float "left"}}
-      (atom-toggle *disconnect<- (line-through "network in") "network in")
-      [:text {:style {:display "inline block"
-                      :cursor "pointer"}
-             :on-click (fn []
-                         (swap! *disconnect<- not)
-                         (swap! *disconnect-> not))}
-       "/"]
-      (atom-toggle *disconnect->  (line-through "notwork out") "network out")]
-     [:div#header {:style {:height "60px"}}
-      [:div
-       (+ (count chain-origin) (count chain-local))
-       [:font {:color "gray"} " blocks in chain"]]
-      [:div
-       [:font {:color "gray"} "origin is at "]
-       (take 8 (str (b/head chain-origin)))
-       [:font {:color "gray"} (str " " (:data (last chain-origin)))]]
-      (if-not (empty? chain-local)
-        [:div
-         [:font {:color "orange"} "local is at "]
-         (take 8 (str (b/head chain-local)))
-         [:font {:color "orange"} (str " " (:data (last chain-local)))]])]
-     [:div {:tab-index 0
+(rum/defc input-field < rum/reactive []
+  (let [projection (rum/react *projection)]
+    [:div#input-field {:tab-index 0
            :on-key-down (comp push-local
                               event-for-key
                               parse-key)
-           :style {:min-height "30px"
-                   :border-style "solid"
-                   :border-color "white"
+           :style {:min-height "20px"
+                   :word-wrap "break-word"
+                   :border-style "dashed"
+                   :border-color "gray"
                    :border-width "1px"
-                   :cursor "pointer"}}
-      projection]]))
+                   :cursor "pointer"
+                   :outline 0}}
+     (str projection "\u2588")]))
+
+(rum/defc header < rum/reactive []
+  (let [chain-origin (rum/react *chain-origin)
+        chain-local (rum/react *chain-local)]
+    [:div#header {:style {:height "60px"}}
+     [:div
+      (+ (count chain-origin) (count chain-local))
+      [:font {:color "gray"} " blocks in chain"]]
+     [:div
+      [:font {:color "gray"} "origin is at "]
+      (take 8 (str (b/head chain-origin)))
+      [:font {:color "gray"} (str " " (:data (last chain-origin)))]]
+     (if-not (empty? chain-local)
+       [:div
+        [:font {:color "orange"} "local is at "]
+        (take 8 (str (b/head chain-local)))
+        [:font {:color "orange"} (str " " (:data (last chain-local)))]])]))
+
+(rum/defc network-toggles []
+  [:div#network-toggles {:style {:position "absolute"
+                                 :right "10px"
+                                 :top "10px"
+                                 :float "left"}}
+   (atom-toggle *disconnect<- (line-through "network in") "network in")
+   [:text {:style {:display "inline block"
+                   :cursor "pointer"}
+           :on-click (fn []
+                       (swap! *disconnect<- not)
+                       (swap! *disconnect-> not))}
+    "/"]
+   (atom-toggle *disconnect->  (line-through "notwork out") "network out")])
+
+(rum/defc hello-world []
+  [:div#hello
+   (network-toggles)
+   (header)
+   (input-field)])
 
 (rum/mount (hello-world)
            (. js/document (getElementById "app")))
 
 (defn on-js-reload []
-)
+  )
