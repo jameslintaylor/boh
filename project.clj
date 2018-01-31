@@ -17,7 +17,8 @@
                  [com.taoensso/sente "1.12.0"]
                  [com.stuartsierra/component "0.3.2"]
                  [http-kit "2.3.0-alpha4"]
-                 [compojure "1.6.0"]]
+                 [compojure "1.6.0"]
+                 [datascript "0.16.3"]]
 
   :plugins [[lein-figwheel "0.5.14"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
@@ -31,14 +32,14 @@
                 ;; The presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
-                :figwheel {:on-jsload "blox-machina-demo.core/on-js-reload"
+                :figwheel {:on-jsload "blox-machina-demos.datascript-demo/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has
                            ;; started and compiled your application.
                            ;; Comment this out once it no longer serves you.
                            :open-urls ["http://localhost:3449/index.html"]}
 
-                :compiler {:main blox-machina-demo.core
+                :compiler {:main blox-machina-demos.datascript-demo
                            :asset-path "js/compiled/out"
                            :output-to "resources/public/js/compiled/blox_machina.js"
                            :output-dir "resources/public/js/compiled/out"
@@ -52,7 +53,7 @@
                {:id "min"
                 :source-paths ["src"]
                 :compiler {:output-to "resources/public/js/compiled/blox_machina.js"
-                           :main blox-machina-demo.core
+                           :main blox-machina-demos.datascript-demo
                            :optimizations :advanced
                            :pretty-print false}}]}
 

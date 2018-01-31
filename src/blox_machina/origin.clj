@@ -45,9 +45,12 @@
     (?reply-fn {:head (b/head chain)
                 :blocks (b/chain-since @*chain base)})))
 
-(defn- make-chsk! [adapter]
+(defn- make-chsk! [adapter opts]
   (let [*uid-counter (atom 0)
-        opts {:packer (edn-packer {:readers b/data-readers})
+        custom-readers (:readers opts)
+        packer (edn-packer {:readers (merge custom-readers
+                                            b/data-readers)})
+        opts {:packer packer
               :user-id-fn (fn [_] (swap! *uid-counter inc))}]
     (sente/make-channel-socket-server! adapter opts)))
 
@@ -60,8 +63,8 @@
          (send-fn uid data))))))
 
 (defn make-chsk-origin!
-  [adapter *chain]
-  (let [{:as chsk :keys [ch-recv send-fn connected-uids]} (make-chsk! adapter)
+  [adapter *chain opts]
+  (let [{:as chsk :keys [ch-recv send-fn connected-uids]} (make-chsk! adapter opts)
         broadcast-fn (make-broadcast-fn send-fn connected-uids)
         injected-handler (comp -handle-event!
                                #(assoc % :*chain *chain)

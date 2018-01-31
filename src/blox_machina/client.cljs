@@ -1,8 +1,8 @@
 (ns blox-machina.client
-  (:require [blox-machina.util :refer [edn-packer callback-chan! pipe]]
+  (:require [blox-machina.blocks :as b]
+            [blox-machina.util :refer [callback-chan! edn-packer pipe]]
             [cljs.core.async :as a]
-            [taoensso.sente :as sente]
-            [blox-machina.blocks :as b])
+            [taoensso.sente :as sente])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defmulti -handle-event! :id)
@@ -39,7 +39,10 @@
                      :*chain-local *chain-local})))
 
 (defn make-chsk! [path opts]
-  (let [opts (assoc opts :packer (edn-packer {:readers b/data-readers}))]
+  (let [custom-readers (:readers opts)
+        packer (edn-packer {:readers (merge custom-readers
+                                            b/data-readers)})
+        opts (assoc opts :packer packer)]
     (sente/make-channel-socket-client! path opts)))
 
 ;; TODO: needs a less brittle implementation...

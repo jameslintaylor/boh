@@ -14,9 +14,7 @@
   (let [*projection (atom (build-fn (build-fn) @*chain))]
     (b/listen! *chain
       (fn [_ delta]
-        (if ((comp :reflected? meta first) delta)
-          (println "reflected data, breaking loop")
-          (swap! *projection build-fn delta))))
+        (swap! *projection build-fn delta)))
     *projection))
 
 #?(:cljs
@@ -27,18 +25,25 @@
 
        (b/listen! *chain-local
          (fn [chain-local delta]
-           (if-not (empty? delta)
-             (swap! *projection build-fn delta)
-             (reset! *projection (build-fn @*projection-origin chain-local)))))
+           (if (:reflected? (meta *chain-local))
+             (alter-meta! *chain-local assoc :reflected? false)
+             (do
+               (if (empty? delta)
+                 (reset! *projection (build-fn @*projection-origin chain-local))
+                 (do
+                   (swap! *projection build-fn delta)
+                   (alter-meta! *projection assoc :projected? true)))))))
 
        *projection)))
 
 (defn ^{:style/indent 1} setup-reflection!
-  [*projection watch-fn]
-  (letfn [(link-reflection! [chain data]
-            (if ((comp :projected? meta) chain)
-              (println "projected data, breaking loop")
-              (let [block (-> (b/create-block (b/head chain) data)
-                              (with-meta {:reflected? true}))]
-                (b/link chain [block]))))]
-    (watch-fn *projection link-reflection!)))
+  [*projection *chain setup-watch-fn]
+  (alter-meta! *projection assoc :projected? false)
+  (alter-meta! *chain assoc :reflected? false)
+  (letfn [(maybe-reflect! [data]
+            (if (-> *projection meta :projected?)
+              (alter-meta! *projection assoc :projected? false)
+              (do
+                (alter-meta! *chain assoc :reflected? true)
+                (swap! *chain b/link-data data))))]
+    (setup-watch-fn *projection maybe-reflect!)))

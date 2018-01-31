@@ -1,5 +1,5 @@
 (ns user
-  (:require [blox-machina-demo.system :as system]
+  (:require [blox-machina-demos.system :as system]
             [blox-machina.blocks :as b]
             [blox-machina.persistence :as persistence]
             [blox-machina.verification :as verification]
