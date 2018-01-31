@@ -2,6 +2,8 @@
   (:require [blox-machina.util :refer [concat-sha1]]
             [blox-machina.verification :as v]))
 
+;; new architecture
+
 (defrecord Block [prev-block data hash])
 
 (def data-readers {'blox-machina.blocks.Block map->Block
