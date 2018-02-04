@@ -1,26 +1,38 @@
 (ns blox-machina.blocks
-  (:require [blox-machina.util :refer [concat-sha1]]
-            [blox-machina.verification :as v]))
+  (:require [blox-machina.util :refer [concat-sha1]]))
 
 (defrecord Block [prev-block data hash])
 
 (def data-readers {'blox-machina.blocks.Block map->Block
                    'blox_machina.blocks.Block map->Block})
 
-(defn create-block [prev-block data]
+(defn next-block [prev-block data]
   (let [hash (concat-sha1 prev-block data)]
     (Block. prev-block data hash)))
+
+(defn update-meta [obj k update-fn & args]
+  (let [m (meta obj)]
+    (with-meta obj (apply update m k update-fn args))))
 
 (defn create-chain
   "Builds a chain of the data with the given base."
   [base & data]
+  {:pre (keyword? base)}
   (loop [prev-block base
          [h & t] data
-         chain (with-meta [] {:base base})]
+         chain (with-meta [] {:base base
+                              :index {}})]
     (if (nil? h)
       chain
-      (let [block (create-block prev-block h)]
-        (recur (:hash block) t (conj chain block))))))
+      (let [index (count chain)
+            block (next-block prev-block h)]
+        (recur (:hash block) t (-> chain
+                                   (update-meta :index assoc (:hash block) index)
+                                   (conj block)))))))
+
+(defn chain? [blocks]
+  (->> (map vector blocks (drop 1 blocks))
+       (every? (fn [[x y]] (= (:prev-block y) (:hash x))))))
 
 (defn head [chain]
   (if (empty? chain)
@@ -33,14 +45,9 @@
     (:prev-block (first chain))))
 
 (defn consecutive?
-  "Returns true if the given chains can be linked together."
-  [& chains]
-  (let [[x y & t] chains]
-    (if (nil? y)
-      true
-      (if (not= (head x) (base y))
-        false
-        (recur (cons y t))))))
+  ([x] true)
+  ([x y]
+   (= (head x) (base y))))
 
 (defn ancestor?
   "Returns true if the given chains share a common history. The chains
@@ -70,20 +77,37 @@
 
 (defn link-data
   [chain & data]
-  (let [blocks (apply create-chain (head chain) data)]
-    (link chain blocks)))
+  (let [chain-data (apply create-chain (head chain) data)]
+    (link chain chain-data)))
 
-(defn delta [chain-from chain-to]
-  (chain-since chain-to (head chain-from)))
+(defn ends= [x y]
+  (and (= (base x) (base y))
+       (= (head x) (head y))))
+
+(defn branch-point
+  [x y]
+  (if (ends= x y)
+    (head x)
+    (if-let [[a _] (->> (map vector x y)
+                        (filter (fn [[a b]] (not= (:hash a) (:hash b))))
+                        first)]
+      (:prev-block a)
+      (base x))))
+
+(defn diff
+  [chain-from chain-to]
+  (let [branch-point (branch-point chain-from chain-to)]
+    {:- (chain-since chain-from branch-point)
+     :+ (chain-since chain-to branch-point)}))
 
 (defn ^{:style/indent 1} listen!
   "Listen for changes to a chain ref. The callback-fn should be a
   2-arity function taking the value of the entire chain aswell as the
-  new blocks (delta). Note that if the ancestry changes, the delta is
+  new blocks (diff). Note that if the ancestry changes, the delta is
   empty. Returns a 0-arity function that unregisters the listener."
   [*chain callback-fn]
   (let [key (rand-int 1000)]
     (add-watch *chain key
                (fn [_ _ old new]
-                 (callback-fn new (delta old new))))
+                 (callback-fn new (diff old new))))
     (fn [] (remove-watch *chain key))))

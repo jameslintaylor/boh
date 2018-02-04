@@ -4,6 +4,7 @@
             [blox-machina.persistence :as persistence]
             [blox-machina.verification :as verification]
             [com.stuartsierra.component :as component]
+            [datascript.core :as d]
             [figwheel-sidecar.repl-api :as f]))
 
 (defonce system (system/make-system))
@@ -30,3 +31,4 @@
     ((get-in system [:origin :chsk :broadcast-fn])
      [:origin/push-blocks {:head new-head
                            :blocks new-blocks}])))
+

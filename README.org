@@ -1,4 +1,36 @@
+#+TITLE: Ideation
+
+* Data
+
+** Block
+
+A block in the most atomic unit of information. A block consists of:
+
+- ~prev-block~: Reference to the hash of the previous block.
+- ~data~: Arbitrary clojure data.
+- ~hash~: hash of ~prev-block~ + ~data~.
+
+* Protocols
+
+** Chain
+
+A chain gives interface to a sequencxe of blocks.
+
+#+BEGIN_SRC clojure
+  (defprotocol Chain
+    (-base [this])
+    (-head [this])
+    (-link [this & blocks] "Build the chain by adding the blocks onto the end.")
+    (-blocks [this base] "Return a seq of all the blocks in the chain after `base`"))
+#+END_SRC 
+
+** BlockChain
+
 * Blocks
+
+* Chain
+
+A Chain is made up of block(s):
 
 A Block consists of:
 - ~prev-block~
@@ -7,6 +39,36 @@ A Block consists of:
 
 ~prev-block~ refers to the hash of the previous block in the chain
 ~hash~ is the sha-1 hash of the concatenation of ~prev-block~ and ~data~
+
+Hypothetically, a single block could be defined as a chain. However
+for this I define a chain as a clojure seq of Blocks.
+
+* Branch
+
+A branch has an upstream (either a ref to another branch or nil) and a
+chain (based at the head of its upstream branch). This downstream
+chain contains changes that can be pushed upstream and upstream
+changes can be pulled downstream. The interface for these two
+operations follow.
+
+Branches are at the forefront of the API. They are the main way to
+work with chains. They intentionally borrow a lot of terminology and
+semantics from git.
+
+** push-upstream
+
+Push the branch chain upstream. When successful, this function should
+return a new branch (now empty and based on the updated upstream).
+
+** pull-upstream-rebase
+
+Pull any changes from upstream. When successful, this function should
+return a new branch (now based on the updated upstream).
+
+** commit
+
+Takes data and returns a new branch with the data linked to the branch
+chain.
 
 * Origin
 

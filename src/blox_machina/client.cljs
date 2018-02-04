@@ -45,10 +45,36 @@
         opts (assoc opts :packer packer)]
     (sente/make-channel-socket-client! path opts)))
 
+(defn create-pair [base]
+  {:chain-origin (b/create-chain base)
+   :chain-local (b/create-chain base)})
+
+(defn link-origin [pair & chains]
+  (-> pair
+      (update :chain-origin b/link chains)
+      (update :chain-local b/rebase (b/head chains))))
+
+(defn link-local [pair & chains]
+  )
+
+(defn make-chsk-send [send-fn]
+  (fn [data reply-fn]
+    (send-fn data 1000 reply-fn)))
+
+(defn with-assoc [wrapped-fn & kvs]
+  (fn [m]
+    (wrapped-fn (apply assoc m kvs))))
+
+(defn ^{:style/indent 1} listen-opened!
+  [*state listen-fn]
+  (add-watch *state (rand-int 1000)
+             (fn [_ _ {:open? was-open} {:open? is-open}]
+               (when (and (not was-open) is-open)
+                 (listen-fn)))))
+
 ;; TODO: needs a less brittle implementation...
 (defn make-pair-client! [path opts]
-  (let [*chain-origin (atom (b/create-chain :gen))
-        *chain-local (atom (b/create-chain :gen))
+  (let [*pair (create-pair :gen)
         *freeze-local? (atom false)
 
         ;; for testing network errors
@@ -56,22 +82,20 @@
         *disconnect<- (atom false)
 
         {:keys [chsk ch-recv send-fn state]} (make-chsk! path opts)
-        chsk-send! (fn [data reply-fn] (send-fn data 1000 reply-fn))
-        injected-handler (comp -handle-msg!
-                               #(assoc % :*chain-origin *chain-origin)
-                               #(assoc % :*chain-local *chain-local)
-                               #(assoc % :*disconnect<- *disconnect<-))]
+        chsk-send! (make-chsk-send send-fn)
+
+        injected-handler (with-assoc -handle-msg!
+                           :*pair *pair
+                           :*disconnect<- *disconnect<-)]
 
     ;; pull blocks whenever socket opens
-    (add-watch state :state-watch
-               (fn [_ _ _ state]
-                 (when (:open? state)
-                   (chsk-send!
-                    [:client/pull-blocks {:base (b/head @*chain-origin)}]
-                    (fn [{:as reply :keys [head blocks]}]
-                      (println (str "socket opened, got " (count blocks) " blocks!"))
-                      (swap! *chain-origin b/link blocks)
-                      (swap! *chain-local b/rebase head))))))
+    (listen-opened! state
+      (fn []
+        (chsk-send!
+         (pull-msg (b/head (:chain-origin @*pair)))
+         (fn [{:as reply :keys [head blocks]}]
+           (println "socket opened, got" (count blocks) " blocks!")
+           (swap! *pair b/link-origin blocks)))))
 
     ;; watch local chain
     (b/listen! *chain-local
