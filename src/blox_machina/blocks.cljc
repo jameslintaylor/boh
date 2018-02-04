@@ -44,24 +44,6 @@
     (:base (meta chain))
     (:prev-block (first chain))))
 
-(defn consecutive?
-  ([x] true)
-  ([x y]
-   (= (head x) (base y))))
-
-(defn ancestor?
-  "Returns true if the given chains share a common history. The chains
-  are expected to be ordered oldest to newest. Note that a chain is
-  not considered an ancestor of itself."
-  [& chains]
-  (let [[x y & t] chains]
-    (if (nil? y)
-      true
-      (let [branch-point (head x)]
-        (if-not (some #(= branch-point (:prev-block %)) y)
-          false
-          (recur (cons y t)))))))
-
 (defn chain-since [chain base]
   (-> (into [] (drop-while #(not= base (:prev-block %)) chain))
       (with-meta {:base base})))
@@ -80,13 +62,26 @@
   (let [chain-data (apply create-chain (head chain) data)]
     (link chain chain-data)))
 
-(defn ends= [x y]
+(defn adjacent? [x y]
+  (= (head x) (base y)))
+
+(defn descendant?
+  "Returns true if `y` is a descendant of `x`. A chain is not considered
+  to be a descendant of itself."
+  [x y]
+  (not (empty? (chain-since y (head x)))))
+
+(defn ends=
+  "Cheap way to compare if two chains are 'equal' this doesn't not
+  exhaustively check the intermediate hashes for vaidity."
+  [x y]
   (and (= (base x) (base y))
        (= (head x) (head y))))
 
 (defn branch-point
   [x y]
-  (if (ends= x y)
+  (if (or (ends= x y)
+          (descendant? x y))
     (head x)
     (if-let [[a _] (->> (map vector x y)
                         (filter (fn [[a b]] (not= (:hash a) (:hash b))))
