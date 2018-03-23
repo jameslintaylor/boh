@@ -18,7 +18,9 @@
                  [com.stuartsierra/component "0.3.2"]
                  [http-kit "2.3.0-alpha4"]
                  [compojure "1.6.0"]
-                 [datascript "0.16.3"]]
+                 [datascript "0.16.3"]
+                 [com.cognitect/transit-clj "0.8.300"]
+                 [datascript-transit "0.2.2"]]
 
   :plugins [[lein-figwheel "0.5.14"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
@@ -100,7 +102,8 @@
   ;; Setting up nREPL for Figwheel and ClojureScript dev
   ;; Please see:
   ;; https://github.com/bhauman/lein-figwheel/wiki/Using-the-Figwheel-REPL-within-NRepl
-  :profiles {:dev {:dependencies [[binaryage/devtools "0.9.4"]
+  :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]
+                                  [binaryage/devtools "0.9.4"]
                                   [figwheel-sidecar "0.5.14"]
                                   [com.cemerick/piggieback "0.2.2"]]
                    ;; need to add dev source path here to get user.clj loaded

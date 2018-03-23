@@ -1,23 +1,50 @@
 (ns blox-machina.blocks
-  (:require [blox-machina.util :refer [concat-sha1]]))
+  (:require [blox-machina.util :refer [sha1]]
+            [clojure.spec.alpha :as s]
+            [datascript.transit :as dt]))
 
-(defrecord Block [prev-block data hash])
+;; sha-1 hashes are 40 hexadecimal symbols.
+(s/def ::hash #(re-matches #"^:[a-f0-9]{40}$" (str %)))
+(s/def ::data string?)
+(s/def ::prev (s/nilable ::hash))
+(s/def ::block (s/keys :req-un [::prev ::data ::hash]))
 
-(def data-readers {'blox-machina.blocks.Block map->Block
-                   'blox_machina.blocks.Block map->Block})
+(def data-readers {})
 
-(defn next-block [prev-block data]
-  (let [hash (concat-sha1 prev-block data)]
-    (Block. prev-block data hash)))
+(defrecord Block [prev data hash])
+
+(defn content-str
+  "Represent the contents of a block as a string. These are the bytes
+  from which the hash of the block should be calculated."
+  ([{:keys [prev data]}] (content-str prev data))
+  ([prev data] (str prev "\n" data)))
+
+(defn hash-block [prev data]
+  {:pre [(s/valid? ::prev prev)
+         (s/valid? ::data data)]
+   :post [(s/valid? ::block %)]}
+  (let [hash (sha1 (content-str prev data))]
+    (Block. prev data (keyword hash))))
 
 (defn update-meta [obj k update-fn & args]
   (let [m (meta obj)]
     (with-meta obj (apply update m k update-fn args))))
 
-(defn create-chain
+(defn chain-data [base & data]
+  {:pre [(s/valid? ::prev base)
+         (s/valid? (s/coll-of ::data) data)]}
+  (loop [chain []
+         prev-block base
+         [h & t] data]
+    (if (nil? h)
+      chain
+      (let [b (hash-block prev-block h)]
+        (recur (conj chain b) (:hash b) t)))))
+
+(defn chain-data
   "Builds a chain of the data with the given base."
   [base & data]
-  {:pre (keyword? base)}
+  {:pre [(s/valid? (s/nilable keyword?) base)]}
   (loop [prev-block base
          [h & t] data
          chain (with-meta [] {:base base
@@ -25,16 +52,24 @@
     (if (nil? h)
       chain
       (let [index (count chain)
-            block (next-block prev-block h)]
+            block (hash-block prev-block h)]
         (recur (:hash block) t (-> chain
                                    (update-meta :index assoc (:hash block) index)
                                    (conj block)))))))
 
-(defn chain? [blocks]
-  (->> (map vector blocks (drop 1 blocks))
-       (every? (fn [[x y]] (= (:prev-block y) (:hash x))))))
+(defn gen-chain
+  "Builds a chain starting with the genesis block."
+  [& data]
+  (apply chain-data nil data))
 
-(defn head [chain]
+(defn chain?
+  "Checks if a sequence of blocks forms a contiguous chain. Notably this
+  does not check the actual hash for each block."
+  [blocks]
+  (->> (map vector blocks (drop 1 blocks))
+       (every? (fn [[x y]] (= (:prev y) (:hash x))))))
+
+(defn tip [chain]
   (if (empty? chain)
     (:base (meta chain))
     (:hash (last chain))))
@@ -49,7 +84,7 @@
       (with-meta {:base base})))
 
 (defn rebase [chain base]
-  (apply create-chain base (map :data chain)))
+  (apply chain-data base (map :data chain)))
 
 (defn link [& chains]
   (let [[x y & t] chains]
@@ -59,30 +94,30 @@
 
 (defn link-data
   [chain & data]
-  (let [chain-data (apply create-chain (head chain) data)]
+  (let [chain-data (apply chain-data (tip chain) data)]
     (link chain chain-data)))
 
 (defn adjacent? [x y]
-  (= (head x) (base y)))
+  (= (tip x) (base y)))
 
 (defn descendant?
   "Returns true if `y` is a descendant of `x`. A chain is not considered
   to be a descendant of itself."
   [x y]
-  (not (empty? (chain-since y (head x)))))
+  (not (empty? (chain-since y (tip x)))))
 
 (defn ends=
   "Cheap way to compare if two chains are 'equal' this doesn't not
-  exhaustively check the intermediate hashes for vaidity."
+  exhaustively check the intermediate hashes for validity."
   [x y]
   (and (= (base x) (base y))
-       (= (head x) (head y))))
+       (= (tip x) (tip y))))
 
 (defn branch-point
   [x y]
   (if (or (ends= x y)
           (descendant? x y))
-    (head x)
+    (tip x)
     (if-let [[a _] (->> (map vector x y)
                         (filter (fn [[a b]] (not= (:hash a) (:hash b))))
                         first)]
@@ -106,3 +141,23 @@
                (fn [_ _ old new]
                  (callback-fn new (diff old new))))
     (fn [] (remove-watch *chain key))))
+
+#_(defrecord ChainRef [*chain]
+
+  p/ChainProxy
+  (pull-result [this base]
+    (let [chain @*chain]
+      {:tip (tip chain)
+       :chain (chain-since chain base)}))
+
+  (push-result [this new-chain]
+    (let [chain @*chain]
+      (if (adjacent? chain new-chain)
+        {:tip (tip (swap! *chain link new-chain))}
+        (let [missing-chain (chain-since chain (base new-chain))
+              rebased-chain (rebase new-chain (tip missing-chain))]
+          {:tip (tip (swap! *chain link rebased-chain))
+           :?forward-chain (link missing-chain rebased-chain)})))))
+
+#_(defn chain-ref [*chain]
+  (->ChainRef *chain))

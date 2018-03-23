@@ -1,27 +1,16 @@
 (ns blox-machina.branch
   (:require [blox-machina.blocks :as b]
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
-               :cljs [cljs.core.async :as a]))
+               :cljs [cljs.core.async :as a])
+            [blox-machina.chain-proxy :as p])
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]])))
 
-(defprotocol ChainProxy
-  "A means to indirectly control a chain."
-  (pull-result [this base])
-  (push-result [this chain]))
-
-(defprotocol ChainProxyAsync
-  "A means to indirectly control a chain asynchronously."
-  (ch-pull-result [this base])
-  (ch-push-result [this chain]))
-
-(defprotocol ChainRecv
-  (ch-recv [this]))
+(defrecord Branch [upstream-chain branch-chain])
 
 (defn create-branch
   ([] (apply create-branch (repeat 2 (b/create-chain :gen))))
   ([upstream-chain branch-chain]
-   {:upstream-chain upstream-chain
-    :branch-chain branch-chain}))
+   (->Branch upstream-chain branch-chain)))
 
 (defn base [branch]
   (b/base (:upstream-chain branch)))
@@ -32,7 +21,7 @@
 (defn upstream-head [branch]
   (b/head (:upstream-chain branch)))
 
-(defn flatten-chain [branch]
+(defn full-chain [branch]
   (b/link (:upstream-chain branch) (:branch-chain branch)))
 
 (defn commit [branch & data]
@@ -67,30 +56,30 @@
             (forward-upstream ?forward-chain))))))
 
 (defn pull! [branch upstream-proxy]
-  {:pre [(satisfies? ChainProxy upstream-proxy)]}
-  (let [result (pull-result upstream-proxy (upstream-head branch))]
+  {:pre [(satisfies? p/ChainProxy upstream-proxy)]}
+  (let [result (p/pull-result upstream-proxy (upstream-head branch))]
     (with-pull branch result)))
 
 (defn pull-async! [branch upstream-proxy]
-  {:pre [(satisfies? ChainProxyAsync upstream-proxy)]}
+  {:pre [(satisfies? p/ChainProxyAsync upstream-proxy)]}
   (let [ch (a/chan)]
     (go
-      (let [result (a/<! (ch-pull-result upstream-proxy (upstream-head branch)))]
+      (let [result (a/<! (p/ch-pull-result upstream-proxy (upstream-head branch)))]
         (a/>! ch (with-pull branch result))))
     ch))
 
 (defn push! [branch upstream-proxy]
-  {:pre [(satisfies? ChainProxy upstream-proxy)]}
+  {:pre [(satisfies? p/ChainProxy upstream-proxy)]}
   (let [{:keys [branch-chain]} branch
-        result (push-result upstream-proxy branch-chain)]
+        result (p/push-result upstream-proxy branch-chain)]
     (with-push branch branch-chain result)))
 
 (defn push-async! [branch upstream-proxy]
-  {:pre [(satisfies? ChainProxyAsync upstream-proxy)]}
+  {:pre [(satisfies? p/ChainProxyAsync upstream-proxy)]}
   (let [ch (a/chan)
         {:keys [branch-chain]} branch]
     (go
-      (let [push-result (a/<! (ch-push-result upstream-proxy branch-chain))]
+      (let [push-result (a/<! (p/ch-push-result upstream-proxy branch-chain))]
         (a/>! ch (with-push branch branch-chain push-result))))
     ch))
 
@@ -124,7 +113,6 @@
   {:pre [(satisfies? ChainProxy proxy)]}
   (listen! conn
     (fn [branch {:keys [upstream branch]}]
-      (println "pushing")
       (when-not (empty? (:+  branch))
         (swap! conn push! proxy)))))
 
@@ -160,58 +148,22 @@
   (juxt (auto-push-async! conn upstream-proxy-recv)
         (auto-recv! conn upstream-proxy-recv)))
 
-(defrecord ChainRef [*chain]
+(defrecord BranchRef [*branch]
 
-  ChainProxy
+  p/ChainProxy
   (pull-result [this base]
-    (let [chain @*chain]
-      {:head (b/head chain)
-       :chain (b/chain-since chain base)}))
+    (let [branch @conn]
+      {:head (head branch)
+       :chain (b/chain-since (full-chain branch) base)}))
 
-  (push-result [this new-chain]
-    (let [chain @*chain]
-      (if (= (b/base new-chain) (b/head chain))
-        {:head (b/head (swap! *chain b/link new-chain))}
-        (let [missing-chain (b/chain-since chain (b/base new-chain))
-              rebased-chain (b/rebase new-chain (b/head missing-chain))]
-          {:head (b/head (swap! *chain b/link rebased-chain))
-           :?forward-chain (b/link missing-chain rebased-chain)}))))
+  (push-result [this chain]
+    (let [{:as branch :keys [upstream-chain branch-chain]} @conn]
+      (if (b/adjacent? branch-chain chain)
+        {:head (head (swap! conn update :branch-chain b/link chain))}
+        (let [missing-chain (b/chain-since (full-chain branch) (b/base chain))
+              rebased-chain (b/rebase chain (b/head missing-chain))]
+          {:head (head (swap! conn update :branch-chain b/link rebased-chain))
+           :?forward-chain (b/link missing-chain rebased-chain)})))))
 
-  ChainRecv
-  (ch-recv [this]
-    (let [ch (a/chan)]
-      (b/listen! *chain
-        (fn [_ diff]
-          (a/put! ch diff)))
-      ch)))
-
-(defn chain-ref [*chain]
-  (->ChainRef *chain))
-
-(defn sink []
-  (reify ChainProxy
-    (pull-result [this base]
-      (println "nothing can be retrieved from the sink!"))
-    (push-result [this chain]
-      {:head (b/head chain)})))
-
-(defn- lift-proxy
-  "lifts a synchronous `ChainProxy` implementation into one that
-  provides the asynchronous `ChainProxyAsync`."
-  [proxy]
-  {:pre [(satisfies? ChainProxy proxy)]}
-  (reify
-
-    ChainProxyAsync
-    (ch-pull-result [this base]
-      (let [ch (a/chan)]
-        (a/put! ch (pull-result proxy base))
-        ch))
-    (ch-push-result [this chain]
-      (let [ch (a/chan)]
-        (a/put! ch (push-result proxy chain))
-        ch))
-
-    ChainRecv
-    (ch-recv [this]
-      (ch-recv proxy))))
+(defn branch-ref [*branch]
+  (->BranchRef *branch))

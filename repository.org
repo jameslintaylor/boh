@@ -1,0 +1,151 @@
+* Anatomy of a block repository
+
+Essentially it's a simplified git repository. 
+
+Similar in concept to a git repository except we only deal with
+blocks, this is to say that there exists no notion of objects
+(blobs/trees/commits) as there does in a git repository but only
+blocks.
+
+A block consists of three things:
+- ~prev~: the reference to the sha-1 hash its parent block.
+- ~data~: arbitrary (string represented) data.
+- ~hash~: the sha-1 of the contents of the block (simply ~prev + data~)
+
+There exists also the notion of branches in a block repository, this
+just serves as a way to name a particular "mutable" chain, or line of
+development in git terminology.
+
+A block repository therefore consists of 2 "databases", just maps in
+the clojure implementation:
+
+#+BEGIN_SRC clojure
+  {:branches {:master :12eb7...}
+   :blocks {:12eb7.. {:prev nil
+                      :data ...
+                      :hash :12eb7...}}}
+#+END_SRC
+
+Regardless of language and data structure, there should be a way to
+associate ~branch-name -> hash~ as well as a way to associate ~hash ->
+block~.
+
+For all intensive purposes, we can just think of ~:branches~ as as the
+effective "version" of a repository, and the ~:blocks~ as the database
+of blocks. As consistency between the two is not really enforced, (ie.
+it is assumed that a repositories block database contains all the
+blocks that make up its branches), the two /could/ be separately
+managed. They have been combined into the singular notion of a
+repository to keep the git analogy a little stronger.
+
+** Turning this into a chain
+
+A chain is simply a sequence of adjacent blocks. This is to say that
+each block is the direct descendant of the block previous to it.
+Starting at any block in the blocks-database, one should be able to
+recursively traverse through its ancestors to form a chain. A chain is
+just one path in the tree of blocks.
+
+** Calculating the difference between two repositories.
+
+The difference or diff between two repositories can be expressed as such:
+
+#+BEGIN_SRC clojure
+  ;; Hashes simplified to numbers
+
+  ;; Repository A
+  (def a
+    {:branches {:master :1}
+     :blocks {:1 {:prev nil :data "cats" :hash :1}}})
+
+  ;; Repository B
+  (def b
+    {:branches {:master :2
+                :feature :3}
+     :blocks {:1 {:prev nil :data "cats" :hash :1}
+              :2 {:prev :1 :data "dogs" :hash :2}
+              :3 {:prev :1 :data "giraffes" :hash :3}}})
+
+  ;; diff-branches :: branches-older -> branches-newer -> diff
+  (diff-branches (:branches a) (:branches b)) => {:master [:1 :2]
+                                                  :feature [nil :3]}
+
+
+  ;; this diff can be used to calculate the blocks missing, supplied with a block database.
+  ;; branch-chains :: branch-diff -> chains
+  (get-patch branch-diff (:blocks b) => {:branches {:master :2
+                                                    :feature :3}
+                                         :blocks  [{:prev :1 :data "dogs" :hash :2}
+                                                   {:prev :1 :data "giraffes" :hash :3}]}
+
+             ;; branch chains can then be pushed up to a repo to "update" it
+             (update a patch) => { ...b }
+#+END_SRC
+
+** Repository Functions
+
+#+BEGIN_SRC clojure
+  (defn empty-repository
+    "There is nothing in this repository... but hey, it's a repository!"
+    [])
+
+  (defn upsert-branch
+    "Update or insert a new branch, pointing to the new head."
+    [repo branch head])
+
+  (defn add-block
+    "Add a block to the repositories block database."
+    [repo block])
+
+  (defn commit
+    "Commit new data onto a branch by computing a block for the data,
+    adding it to the database, and finally updating the branch."
+    [repo branch data])
+
+  (defn chain
+    ([repo ref-tip])
+    ([repo ref-tip ref-base]))
+
+  (defn chains
+    [repo branch-spec])
+#+END_SRC
+
+* Syncing over the wire
+ 
+We now have API for computing differences and pushing changes from one
+in-memory repository to another. But this is not common in practice.
+More likely is that we would like to push and pull changes from a
+repository running on some other process (another computer over the
+network for instance). Instead of coming up with ad-hoc protocols
+everytime we wish to implement such functionality, let's abstract the
+notion of pushing or pulling from a repository /reference/
+asynchronously.
+
+** Pulling
+
+Pulling from a repository reference should return the branches,
+basically an asynchronous version of ~branch-chains~.
+
+~pull! :: repository-ref -> branches -> channel<branch-chains>~
+
+#+BEGIN_SRC clojure
+  ;; push!
+  (pull! ref {}) => channel => {:master [{:prev nil :data "cats" :hash :1}]}
+#+END_SRC
+
+Sending the empty ~{}~ version implies that all blocks in all branches
+from the remote repository will be pushed over the wire.
+
+* Workspace
+
+Notably missing from the concept of a git repository is the working
+tree. It's counterpart in a block repository would be something of a
+"working chain", however it need not be coupled with a repository.
+
+The term "working" chain implies that it is a grounds in which changes
+are taking place. it is linked to a specific branch in a specific
+repository and the user might expect to - well - do work on this
+chain: that is have the ability to commit data onto it, switch
+branches etc.
+
+
