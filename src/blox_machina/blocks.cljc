@@ -1,7 +1,6 @@
 (ns blox-machina.blocks
   (:require [blox-machina.util :refer [sha1]]
-            [clojure.spec.alpha :as s]
-            [datascript.transit :as dt]))
+            [clojure.spec.alpha :as s]))
 
 ;; sha-1 hashes are 40 hexadecimal symbols.
 (s/def ::hash #(re-matches #"^:[a-f0-9]{40}$" (str %)))
