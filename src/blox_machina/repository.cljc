@@ -41,6 +41,13 @@
 (defn step [repo diff]
   (RepositoryStep. repo diff (merge repo diff)))
 
+(defn merge-step [previous-step step-fn & args]
+  (let [{:keys [repo-after diff]} previous-step
+        next-step (apply step-fn repo-after args)]
+    (RepositoryStep. repo-after
+                     (merge diff (:diff next-step))
+                     (:repo-after next-step))))
+
 (defn add-block
   "Add a single block to the repository."
   [repo block]
@@ -70,16 +77,16 @@
   must be consecutive to the current branch."
   [repo branch block]
   (-> repo
-      (add-block block) :repo-after
-      (upsert-branch branch (:hash block))))
+      (add-block block)
+      (merge-step upsert-branch branch (:hash block))))
 
 (defn graft-chain
   "Move a branch forward by moving it forward multiple blocks.
   The blocks must be consecutive to the current branch."
   [repo branch chain]
   (-> repo
-      (add-blocks chain) :repo-after
-      (upsert-branch branch (b/tip chain))))
+      (add-blocks chain)
+      (merge-step upsert-branch branch (b/tip chain))))
 
 (defn commit
   "Convenience function. Move a branch forward by computing a block for
@@ -128,8 +135,8 @@
         blocks (chain repo branch anc)
         rebased-blocks (b/rebase blocks (resolve-ref repo branch-onto))]
     (-> repo
-        (add-blocks rebased-blocks) :repo-after
-        (upsert-branch branch (b/tip rebased-blocks)))))
+        (add-blocks rebased-blocks)
+        (merge-step upsert-branch branch (b/tip rebased-blocks)))))
 
 (defn merge-branch
   "Merge a branch into another. This removes the branch from the
@@ -140,9 +147,9 @@
         ;; all merging just follows a rebase technique right now
         rebased-blocks (b/rebase blocks (resolve-ref repo branch-into))]
     (-> repo
-        (add-blocks rebased-blocks) :repo-after
-        (upsert-branch branch-into (b/tip rebased-blocks)) :repo-after
-        (delete-branch branch))))
+        (add-blocks rebased-blocks)
+        (merge-step upsert-branch branch-into (b/tip rebased-blocks))
+        (merge-step delete-branch branch))))
 
 (defn with-intersection
   "Update map a with the intersection from map b."
