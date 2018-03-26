@@ -48,3 +48,22 @@
   (let [out (a/chan)]
     (a/pipeline 4 out xf in)
     out))
+
+(defmacro ^{:style/indent 1}
+  do-with [[sym expression] & body]
+  `(let [~sym ~expression]
+     ~@body
+     ~sym))
+
+(defn with-ns
+  "adds a namespace to all (keyword) keys in a map."
+  [map ns]
+  (reduce-kv
+   (fn [m k v]
+     (let [new-k (if (keyword? k)
+                   (keyword ns (subs (str k) 1)))]
+       (assoc m new-k v)))
+   {} map))
+
+(defn surject-keys [m f & args]
+  (reduce-kv (fn [m k v] (assoc m (apply f k args) v)) {} m))
