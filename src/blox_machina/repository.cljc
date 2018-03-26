@@ -4,7 +4,7 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]))
 
-(s/def ::branch #(re-matches #"^:-[/\-a-z0-9]+" (str %)))
+(s/def ::branch (comp (partial = "-") namespace))
 (s/def ::ref (s/or :hash (s/nilable ::b/hash) :branch ::branch))
 (s/def ::branches (s/map-of ::branch (s/nilable ::b/hash)))
 (s/def ::blocks (s/map-of ::b/hash ::b/block))
@@ -41,10 +41,13 @@
 (defn step [repo diff]
   (RepositoryStep. repo diff (merge repo diff)))
 
-(defn merge-step [previous-step step-fn & args]
-  (let [{:keys [repo-after diff]} previous-step
+(defn join-step
+  "Join a previous step with the result of a new step. Use this to
+  gradually build a diff for more complex operations on repositories."
+  [previous-step step-fn & args]
+  (let [{:keys [repo-before repo-after diff]} previous-step
         next-step (apply step-fn repo-after args)]
-    (RepositoryStep. repo-after
+    (RepositoryStep. repo-before
                      (merge diff (:diff next-step))
                      (:repo-after next-step))))
 
@@ -56,13 +59,20 @@
 (defn add-blocks
   "Bulk add multiple blocks to the repository."
   [repo blocks]
-  (step repo (block-diff (into {} (map (fn [b] [(:hash b) b]) blocks)))))
+  (let [blocks (if (map? blocks) blocks
+                   (into {} (map (fn [b] [(:hash b) b]) blocks)))]
+    (step repo (block-diff blocks))))
 
 (defn upsert-branch
   "Change the hash that a branch points to. If the branch does not exist,
   adds the branch to the repository."
   [repo branch hash]
   (step repo (branch-diff {branch hash})))
+
+(defn upsert-branches
+  "Upsert multiple branches in one step. "
+  [repo branches]
+  (step repo (branch-diff branches)))
 
 (defn delete-branch
   "Remove the branch from the repo. This does not remove any blocks."
@@ -78,7 +88,7 @@
   [repo branch block]
   (-> repo
       (add-block block)
-      (merge-step upsert-branch branch (:hash block))))
+      (join-step upsert-branch branch (:hash block))))
 
 (defn graft-chain
   "Move a branch forward by moving it forward multiple blocks.
@@ -86,7 +96,7 @@
   [repo branch chain]
   (-> repo
       (add-blocks chain)
-      (merge-step upsert-branch branch (b/tip chain))))
+      (join-step upsert-branch branch (b/tip chain))))
 
 (defn commit
   "Convenience function. Move a branch forward by computing a block for
@@ -136,7 +146,7 @@
         rebased-blocks (b/rebase blocks (resolve-ref repo branch-onto))]
     (-> repo
         (add-blocks rebased-blocks)
-        (merge-step upsert-branch branch (b/tip rebased-blocks)))))
+        (join-step upsert-branch branch (b/tip rebased-blocks)))))
 
 (defn merge-branch
   "Merge a branch into another. This removes the branch from the
@@ -148,8 +158,8 @@
         rebased-blocks (b/rebase blocks (resolve-ref repo branch-into))]
     (-> repo
         (add-blocks rebased-blocks)
-        (merge-step upsert-branch branch-into (b/tip rebased-blocks))
-        (merge-step delete-branch branch))))
+        (join-step upsert-branch branch-into (b/tip rebased-blocks))
+        (join-step delete-branch branch))))
 
 (defn with-intersection
   "Update map a with the intersection from map b."
