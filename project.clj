@@ -20,7 +20,15 @@
                  [compojure "1.6.0"]
                  [datascript "0.16.3"]
                  [com.cognitect/transit-clj "0.8.300"]
-                 [datascript-transit "0.2.2"]]
+                 [datascript-transit "0.2.2"]
+                 [cljs-http "0.1.44"]
+                 [com.cognitect/transit-cljs "0.8.243"]
+                 [compojure "1.6.0"]
+                 [fuck-cors "0.1.7"]
+                 [ring-transit "0.1.3"]
+                 [ring-json-params "0.1.3"]
+                 [ring-cors "0.1.11"]
+                 [com.taoensso/sente "1.12.0"]]
 
   :plugins [[lein-figwheel "0.5.14"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
@@ -34,14 +42,14 @@
                 ;; The presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
-                :figwheel {:on-jsload "blox-machina-demos.datascript-demo/on-js-reload"
+                :figwheel {:on-jsload "blox-machina-demos.basic-demo/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has
                            ;; started and compiled your application.
                            ;; Comment this out once it no longer serves you.
                            :open-urls ["http://localhost:3449/index.html"]}
 
-                :compiler {:main blox-machina-demos.datascript-demo
+                :compiler {:main blox-machina-demos.basic-demo
                            :asset-path "js/compiled/out"
                            :output-to "resources/public/js/compiled/blox_machina.js"
                            :output-dir "resources/public/js/compiled/out"

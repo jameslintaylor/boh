@@ -2,3 +2,40 @@ html {
     background-color: black;
     color: white;
 }
+
+.block-display {
+    width: 300px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between
+}
+
+#branch-dropdown {
+    cursor: pointer;
+}
+
+#branch-dropdown > #active {
+    padding: 3px;
+    color: black;
+    background-color: white;
+}
+
+#branch-dropdown > .hidden {
+    background-color: black;
+    margin-left: 10px;
+    color: gray;
+    opacity: 0.0;
+    transition: all 0.2s;
+}
+
+#branch-dropdown > .hidden:hover {
+    color: white;
+}
+
+#branch-dropdown:hover > .hidden {
+    opacity: 1;
+}
+
+#chain-display {
+    margin-top: 10px; 
+}

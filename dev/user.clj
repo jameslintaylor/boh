@@ -1,31 +1,15 @@
 (ns user
-  (:require [com.stuartsierra.component :as component]
-            [datascript.core :as d]
-            [datascript.transit :as dt]
-            [figwheel-sidecar.repl-api :as f]))
+  (:require [figwheel-sidecar.repl-api :as f]
+            [blox-machina.repository-reference :as rr]
+            [blox-machina.adapters.server.httpkit :refer [run-httpkit-server]]))
 
-;; (defonce system nil)
+(defonce a (rr/make-ref))
 
-;; (defn start! []
-;;   (alter-var-root #'system component/start))
+(defonce stop! (constantly nil))
 
-;; (defn stop! []
-;;   (alter-var-root #'system component/stop))
+(defn start! []
+  (stop!)
+  (println "starting server on port 3000")
+  (def stop! (run-httpkit-server (rr/as-proxy a) 3000)))
 
-;; (defn reset! []
-;;   (stop!)
-;;   (alter-var-root #'system (constantly (system/make-system))))
-
-;; (defn restart! []
-;;   (stop!)
-;;   (start!))
-
-;; (defn link-data-and-push! [& data]
-;;   (let [head (b/tip @(:*chain (:origin system)))
-;;         new-blocks (apply b/create-chain head data)
-;;         new-head (b/tip new-blocks)]
-;;     (swap! (:*chain (:origin system)) b/link new-blocks)
-;;     ((get-in system [:origin :chsk :broadcast-fn])
-;;      [:origin/push-blocks {:head new-head
-;;                            :blocks new-blocks}])))
-
+(start!)
