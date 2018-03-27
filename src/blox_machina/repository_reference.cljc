@@ -7,7 +7,7 @@
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
                :cljs [cljs.core.async :as a])
             [clojure.string :as s])
-  #?(:cljs (:require-macros [clojure.core.async.maros :refer [go go-loop]])))
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]])))
 
 (defn make-ref
   ([] (make-ref (r/empty-repo)))
@@ -125,14 +125,3 @@
       (do-with [ch (a/chan)]
         (a/put! ch (:branches (swap-step! ref :diff r/step diff)))))
     (subscribe! [_] (listen! ref :diff))))
-
-;; TESTS
-
-(do
-  (def a (make-ref))
-  (def b (make-ref))
-  (def c (make-ref))
-
-  (autosync-proxy! a "origin" (as-proxy b))
-  (autosync-proxy! b "origin-origin" (as-proxy c)))
-
