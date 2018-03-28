@@ -1,20 +1,10 @@
 (ns blox-machina.util
-  (:require taoensso.sente.interfaces
-            #?(:clj [clojure.tools.reader.edn :as edn]
-               :cljs [cljs.tools.reader.edn :as edn])
-            #?(:clj [clojure.core.async :as a]
+  (:require #?(:clj [clojure.core.async :as a :refer [go]]
                :cljs [cljs.core.async :as a])
             #?(:clj pandect.algo.sha1
                :cljs goog.crypt))
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
   #?(:cljs (:import goog.crypt.Sha1)))
-
-(deftype EdnPacker [opts]
-  taoensso.sente.interfaces/IPacker
-  (pack [_ x] (pr-str x))
-  (unpack [_ s] (edn/read-string opts s)))
-
-(defn edn-packer [opts]
-  (EdnPacker. opts))
 
 (def sha1
   #?(:clj pandect.algo.sha1/sha1
@@ -33,21 +23,8 @@
        sha1
        keyword))
 
-(defn callback-chan!
-  "Takes a callback-consuming function and registers with it a callback
-  that passes on the values to the returned channel using an optional
-  packing function."
-  ([register-fn] (callback-chan! register-fn identity))
-  ([register-fn packing-fn]
-   (let [chan (a/chan)]
-     (register-fn (fn [& xs]
-                    (a/put! chan (apply packing-fn xs))))
-     chan)))
-
-(defn- pipe [in xf]
-  (let [out (a/chan)]
-    (a/pipeline 4 out xf in)
-    out))
+(defn surject-keys [m f & args]
+  (reduce-kv (fn [m k v] (assoc m (apply f k args) v)) {} m))
 
 (defmacro ^{:style/indent 1}
   do-with [[sym expression] & body]
@@ -55,15 +32,7 @@
      ~@body
      ~sym))
 
-(defn with-ns
-  "adds a namespace to all (keyword) keys in a map."
-  [map ns]
-  (reduce-kv
-   (fn [m k v]
-     (let [new-k (if (keyword? k)
-                   (keyword ns (subs (str k) 1)))]
-       (assoc m new-k v)))
-   {} map))
-
-(defn surject-keys [m f & args]
-  (reduce-kv (fn [m k v] (assoc m (apply f k args) v)) {} m))
+(defmacro ^{:style/indent 1}
+  go-let [bindings & body]
+  `(go (let ~bindings
+         ~@body)))

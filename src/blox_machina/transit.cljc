@@ -9,7 +9,7 @@
   {#?(:clj Repository :cljs r/Repository)
    (t/write-handler
     (constantly "blox/Repository")
-    (fn [v] {:branches (:branches v)
+    (fn [v] {:heads (:heads v)
              :blocks (:blocks v)}))
 
    #?(:clj Block :cljs b/Block)

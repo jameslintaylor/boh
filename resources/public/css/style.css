@@ -18,6 +18,7 @@ html {
     padding: 3px;
     color: black;
     background-color: white;
+    border-radius: 2px;
 }
 
 #branch-dropdown > .hidden {

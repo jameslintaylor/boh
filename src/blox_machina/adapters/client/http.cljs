@@ -15,16 +15,16 @@
         pull-endpoint (make-endpoint (or pull-path "/pull"))
         push-endpoint (make-endpoint (or pull-path "/push"))]
     (reify RepositoryProxy
-      (pull! [_ version]
+      (pull [_ version]
         (http/post pull-endpoint
                    {:channel (a/chan 1 (map :body))
                     :transit-params {:version version}
                     :transit-opts transit-opts}))
-      (push! [_ diff]
+      (push [_ diff]
         (http/post push-endpoint
                    {:channel (a/chan 1 (map :body))
                     :transit-params {:diff diff}
                     :transit-opts transit-opts}))
-      (subscribe! [_]
+      (subscribe [_ version]
         (println "subscribe is not supported for an http proxy!")
         (a/to-chan [])))))

@@ -1,14 +1,14 @@
 (ns blox-machina-demos.basic-demo
   (:require [rum.core :as rum]
+            [blox-machina.upstream :as u]
             [blox-machina.repository :as r]
             [blox-machina.repository-reference :as rr]
             [blox-machina.adapters.client.http :refer [http-proxy]]))
 
 (enable-console-print!)
 
-(def origin (http-proxy "http://localhost:3000"))
-(defonce a (-> (rr/make-ref)
-               (rr/autopush-proxy! "origin" origin)))
+(def remote (http-proxy "http://localhost:3000"))
+(defonce *repo (rr/make-ref))
 (defonce *branch (atom nil))
 
 (defn display-hash [hash]
@@ -24,7 +24,7 @@
     (display-hash (:hash block))]])
 
 (defn branch-switcher [repo branch]
-  (let [branches (keys (dissoc (:branches repo) branch))]
+  (let [branches (keys (dissoc (:heads repo) branch))]
     [:div
      [:span
       "on branch "
@@ -35,14 +35,14 @@
          [:span.hidden
           {:key b
            :on-click (partial reset! *branch b)}
-          (str b)])]]]))
+          (subs (str b) 3)])]]]))
 
 (defn chain-display [blocks]
   [:div#chain-display
    (map block-element blocks)])
 
 (rum/defc hello-strings < rum/reactive []
-  (let [repo (rum/react a)
+  (let [repo (rum/react *repo)
         branch (rum/react *branch)]
     [:div#hello
      [:b "A DEMO"]

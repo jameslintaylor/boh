@@ -28,24 +28,25 @@
 
 (defn handle-root! [proxy req]
   (httpkit/with-channel req ch
-    (a/go (let [repo (a/<! (rp/pull! proxy {}))]
+    (a/go (let [repo (a/<! (rp/pull proxy {}))]
             (->> (count (:blocks repo))
-                 (format "I am a block repository.\n I contain %d blocks.")
-                 response
+                 (format "I am a block repository.\n I contain %d
+                 non-dangling blocks.") response
                  (httpkit/send! ch))))))
 
 (defn handle-pull! [proxy req]
   (let [version (get-in req [:transit-params :version])]
     (httpkit/with-channel req ch
-      (a/go (let [pull-result (a/<! (rp/pull! proxy version))
+      (a/go (let [pull-result (a/<! (rp/pull proxy version))
                   response (-> (my-transit-response pull-result)
                                my-fill-cors)]
               (httpkit/send! ch response))))))
 
 (defn handle-push! [proxy req]
   (let [diff (get-in req [:transit-params :diff])]
+    (println "got diff" diff)
     (httpkit/with-channel req ch
-      (a/go (let [push-result (a/<! (rp/push! proxy diff))
+      (a/go (let [push-result (a/<! (rp/push proxy diff))
                   response (-> (my-transit-response push-result)
                                my-fill-cors)]
               (httpkit/send! ch response))))))
