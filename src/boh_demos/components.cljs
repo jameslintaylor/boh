@@ -1,5 +1,5 @@
 (ns boh-demos.components
-  (:require [blox-machina.blocks :as b]
+  (:require [boh.blocks :as b]
             [rum.core :as rum]))
 
 (rum/defc atom-toggle < rum/reactive

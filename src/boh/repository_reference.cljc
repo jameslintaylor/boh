@@ -1,13 +1,13 @@
 (ns boh.repository-reference
   (:refer-clojure :exclude [proxy-name])
-  (:require [blox-machina.repository :as r]
-            [blox-machina.repository-proxy :refer [RepositoryProxy]]
-            #?(:clj [blox-machina.util :refer [do-with]])
+  (:require [boh.repository :as r]
+            [boh.repository-proxy :refer [RepositoryProxy]]
+            #?(:clj [boh.util :refer [do-with]])
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
                :cljs [cljs.core.async :as a])
-            [blox-machina.util :refer [surject-keys]])
+            [boh.util :refer [surject-keys]])
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]
-                            [blox-machina.util :refer [do-with]])))
+                            [boh.util :refer [do-with]])))
 
 (defn make-ref
   ([] (make-ref (r/empty-repo)))

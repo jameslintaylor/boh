@@ -1,6 +1,6 @@
 (ns boh.adapters.client.http
-  (:require [blox-machina.repository-proxy :refer [RepositoryProxy]]
-            [blox-machina.transit :refer [transit-writers transit-readers]]
+  (:require [boh.repository-proxy :refer [RepositoryProxy]]
+            [boh.transit :refer [transit-writers transit-readers]]
             [cljs-http.client :as http]
             [cljs.core.async :as a])
   (:require-macros [cljs.core.async.macros :refer [go]]))

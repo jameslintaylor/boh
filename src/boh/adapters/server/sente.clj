@@ -1,6 +1,6 @@
 (ns boh.adapters.server.sente
-  (:require [blox-machina.repository-proxy :as rp]
-            [blox-machina.transit :refer [transit-readers transit-writers]]
+  (:require [boh.repository-proxy :as rp]
+            [boh.transit :refer [transit-readers transit-writers]]
             [clojure.core.async :as a :refer [go go-loop]]
             [taoensso.sente :as sente]
             [taoensso.sente.packers.transit :as sente-transit]

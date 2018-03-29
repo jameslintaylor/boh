@@ -1,9 +1,9 @@
 (ns boh.transit
   (:require [cognitect.transit :as t]
-            [blox-machina.repository :as r]
-            [blox-machina.blocks :as b])
-  #?(:clj (:import [blox_machina.repository Repository]
-                   [blox_machina.blocks Block])))
+            [boh.repository :as r]
+            [boh.blocks :as b])
+  #?(:clj (:import [boh.repository Repository]
+                   [boh.blocks Block])))
 
 (def transit-writers
   {#?(:clj Repository :cljs r/Repository)
