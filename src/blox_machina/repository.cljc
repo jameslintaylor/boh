@@ -237,8 +237,8 @@
 (defn prune
   "Removes all blocks not associated with a branch."
   [repo]
-  (let [{:keys [branches blocks]} repo
-        tips (map second branches)
+  (let [{:keys [heads blocks]} repo
+        tips (map second heads)
         chains (map (partial chain repo) tips)
         blocks (into {} (map tag-block (flatten chains)))]
     (Repository. (:heads repo) blocks)))

@@ -44,7 +44,6 @@
 
 (defn handle-push! [proxy req]
   (let [diff (get-in req [:transit-params :diff])]
-    (println "got diff" diff)
     (httpkit/with-channel req ch
       (a/go (let [push-result (a/<! (rp/push proxy diff))
                   response (-> (my-transit-response push-result)

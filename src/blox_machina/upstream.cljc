@@ -127,7 +127,7 @@
         (rr/swap-step! ref :diff rebase-pairs upstream-name))))
 
 (defn autopull-upstream!
-  "Set up ref to automatically pull changes published from the proxy."
+  "Set up ref to automatically pull changes published from an upstream."
   [ref proxy upstream-name]
   (let [upstream-version (upstream-version (:heads @ref) upstream-name)
         ch (rp/subscribe proxy upstream-version)]
@@ -136,3 +136,12 @@
         (swap-upstream-diff! ref diff upstream-name)
         (recur)))
     ref))
+
+(defn autopush-upstream!
+  "Set up ref to automatically push changes to upstream."
+  [ref proxy upstream-name]
+  (let [ch (rr/listen! ref :diff)]
+    (go-loop []
+      (when-some [diff (a/<! ch)]
+        (a/<! (push-upstream! ref proxy upstream-name))
+        (recur)))))

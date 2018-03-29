@@ -1,5 +1,6 @@
 (ns user
   (:require [figwheel-sidecar.repl-api :as f]
+            [blox-machina.repository :as r]
             [blox-machina.repository-reference :as rr]
             [blox-machina.adapters.server.httpkit :refer [run-httpkit-server]]))
 
