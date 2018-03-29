@@ -1,4 +1,4 @@
-(ns blox-machina.upstream
+(ns boh.upstream
   (:require [clojure.string :as s]
             [blox-machina.repository :as r]
             [blox-machina.repository-proxy :as rp]

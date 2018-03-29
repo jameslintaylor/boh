@@ -1,4 +1,4 @@
-(ns blox-machina.adapters.server.httpkit
+(ns boh.adapters.server.httpkit
   (:require [blox-machina.repository-proxy :as rp]
             [blox-machina.transit :refer [transit-readers transit-writers]]
             [clojure.core.async :as a]

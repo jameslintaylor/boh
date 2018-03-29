@@ -1,4 +1,4 @@
-(ns blox-machina-demos.system
+(ns boh-demos.system
   (:require [com.stuartsierra.component :as component]
             [blox-machina-demos.server :as server]
             [blox-machina-demos.origin :as origin]))

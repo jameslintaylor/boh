@@ -1,4 +1,4 @@
-(ns blox-machina.repository-proxy)
+(ns boh.repository-proxy)
 
 (defprotocol RepositoryProxy
 

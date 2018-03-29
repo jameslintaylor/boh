@@ -1,4 +1,4 @@
-(ns blox-machina.adapters.client.http
+(ns boh.adapters.client.http
   (:require [blox-machina.repository-proxy :refer [RepositoryProxy]]
             [blox-machina.transit :refer [transit-writers transit-readers]]
             [cljs-http.client :as http]

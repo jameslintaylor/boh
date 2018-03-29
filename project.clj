@@ -1,4 +1,4 @@
-(defproject blox-machina "0.1.0-SNAPSHOT"
+(defproject boh "0.1.0-SNAPSHOT"
   :description "FIXME: write this!"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -42,16 +42,16 @@
                 ;; The presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
-                :figwheel {:on-jsload "blox-machina-demos.basic-demo/on-js-reload"
+                :figwheel {:on-jsload "boh-demos.basic-demo/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has
                            ;; started and compiled your application.
                            ;; Comment this out once it no longer serves you.
                            :open-urls ["http://localhost:3449/index.html"]}
 
-                :compiler {:main blox-machina-demos.basic-demo
+                :compiler {:main boh-demos.basic-demo
                            :asset-path "js/compiled/out"
-                           :output-to "resources/public/js/compiled/blox_machina.js"
+                           :output-to "resources/public/js/compiled/main.js"
                            :output-dir "resources/public/js/compiled/out"
                            :source-map-timestamp true
                            ;; To console.log CLJS data-structures make sure you enable devtools in Chrome
@@ -62,8 +62,8 @@
                ;; lein cljsbuild once min
                {:id "min"
                 :source-paths ["src"]
-                :compiler {:output-to "resources/public/js/compiled/blox_machina.js"
-                           :main blox-machina-demos.datascript-demo
+                :compiler {:output-to "resources/public/js/compiled/main.js"
+                           :main boh-demos.datascript-demo
                            :optimizations :advanced
                            :pretty-print false}}]}
 

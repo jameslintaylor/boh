@@ -1,4 +1,4 @@
-(ns blox-machina-demos.server
+(ns boh-demos.server
   (:require [blox-machina.origin :as origin]
             [com.stuartsierra.component :as component]
             [compojure.core :as cpj]

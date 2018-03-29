@@ -1,4 +1,4 @@
-(ns blox-machina.transit
+(ns boh.transit
   (:require [cognitect.transit :as t]
             [blox-machina.repository :as r]
             [blox-machina.blocks :as b])

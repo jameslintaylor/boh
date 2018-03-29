@@ -1,4 +1,4 @@
-(ns blox-machina-demos.basic-demo
+(ns boh-demos.basic-demo
   (:require [rum.core :as rum]
             [blox-machina.upstream :as u]
             [blox-machina.repository :as r]

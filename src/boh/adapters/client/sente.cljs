@@ -1,4 +1,4 @@
-(ns blox-machina.adapters.client.sente
+(ns boh.adapters.client.sente
   (:require [taoensso.sente :as sente]
             [taoensso.sente.packers.transit :as sente-transit]
             [blox-machina.repository-proxy :refer [RepositoryProxy]]

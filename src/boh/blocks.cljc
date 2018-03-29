@@ -1,4 +1,4 @@
-(ns blox-machina.blocks
+(ns boh.blocks
   (:require [blox-machina.util :refer [sha1]]
             [clojure.spec.alpha :as s]))
 

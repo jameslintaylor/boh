@@ -1,4 +1,4 @@
-(ns blox-machina.repository-reference
+(ns boh.repository-reference
   (:refer-clojure :exclude [proxy-name])
   (:require [blox-machina.repository :as r]
             [blox-machina.repository-proxy :refer [RepositoryProxy]]

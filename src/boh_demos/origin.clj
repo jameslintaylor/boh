@@ -1,4 +1,4 @@
-(ns blox-machina-demos.origin
+(ns boh-demos.origin
   (:require [blox-machina.blocks :as b]
             [blox-machina.origin :as origin]
             [com.stuartsierra.component :as component]

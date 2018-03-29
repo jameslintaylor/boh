@@ -1,4 +1,4 @@
-(ns blox-machina-demos.components
+(ns boh-demos.components
   (:require [blox-machina.blocks :as b]
             [rum.core :as rum]))
 

@@ -1,9 +1,9 @@
 (ns user
   (:require [figwheel-sidecar.repl-api :as f]
-            [blox-machina.repository :as r]
-            [blox-machina.repository-reference :as rr]
-            [blox-machina.adapters.server.httpkit :refer [run-httpkit-server]]
-            [blox-machina.adapters.server.sente :refer [run-sente-server]]))
+            [boh.repository :as r]
+            [boh.repository-reference :as rr]
+            [boh.adapters.server.httpkit :refer [run-httpkit-server]]
+            [boh.adapters.server.sente :refer [run-sente-server]]))
 
 (defonce a (rr/make-ref))
 
