@@ -1,10 +1,10 @@
-(ns blox-machina-demos.basic-demo
+(ns boh-demos.basic-demo
   (:require [rum.core :as rum]
-            [blox-machina.upstream :as u]
-            [blox-machina.repository :as r]
-            [blox-machina.repository-reference :as rr]
-            [blox-machina.adapters.client.http :refer [http-proxy]]
-            [blox-machina.adapters.client.sente :refer [sente-proxy]]))
+            [boh.upstream :as u]
+            [boh.repository :as r]
+            [boh.repository-reference :as rr]
+            [boh.adapters.client.http :refer [http-proxy]]
+            [boh.adapters.client.sente :refer [sente-proxy]]))
 
 (enable-console-print!)
 

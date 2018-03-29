@@ -1,6 +1,6 @@
-(ns blox-machina.repository
+(ns boh.repository
   (:refer-clojure :exclude [merge bases])
-  (:require [blox-machina.blocks :as b]
+  (:require [boh.blocks :as b]
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]))
 

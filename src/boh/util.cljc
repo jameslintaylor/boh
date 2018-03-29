@@ -1,4 +1,4 @@
-(ns blox-machina.util
+(ns boh.util
   (:require #?(:clj [clojure.core.async :as a :refer [go]]
                :cljs [cljs.core.async :as a])
             #?(:clj pandect.algo.sha1

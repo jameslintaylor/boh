@@ -1,10 +1,10 @@
-(ns blox-machina.adapters.client.sente
+(ns boh.adapters.client.sente
   (:require [taoensso.sente :as sente]
             [taoensso.sente.packers.transit :as sente-transit]
-            [blox-machina.repository-proxy :refer [RepositoryProxy]]
-            [blox-machina.transit :refer [transit-readers transit-writers]]
+            [boh.repository-proxy :refer [RepositoryProxy]]
+            [boh.transit :refer [transit-readers transit-writers]]
             [cljs.core.async :as a])
-  (:require-macros [blox-machina.util :refer [do-with]]))
+  (:require-macros [boh.util :refer [do-with]]))
 
 (defn sente-proxy [host]
   (let [packer (sente-transit/get-transit-packer :json

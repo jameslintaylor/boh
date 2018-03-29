@@ -1,13 +1,13 @@
-(ns blox-machina.upstream
+(ns boh.upstream
   (:require [clojure.string :as s]
-            [blox-machina.repository :as r]
-            [blox-machina.repository-proxy :as rp]
-            [blox-machina.repository-reference :as rr]
-            [blox-machina.util :refer [surject-keys #?(:clj go-let)]]
+            [boh.repository :as r]
+            [boh.repository-proxy :as rp]
+            [boh.repository-reference :as rr]
+            [boh.util :refer [surject-keys #?(:clj go-let)]]
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
                :cljs [cljs.core.async :as a]))
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]
-                            [blox-machina.util :refer [go-let]])))
+                            [boh.util :refer [go-let]])))
 
 ;; TODO - this should probably live in repository.cljc without the
 ;; upstream logic.

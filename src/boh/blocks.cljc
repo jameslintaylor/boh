@@ -1,5 +1,5 @@
-(ns blox-machina.blocks
-  (:require [blox-machina.util :refer [sha1]]
+(ns boh.blocks
+  (:require [boh.util :refer [sha1]]
             [clojure.spec.alpha :as s]))
 
 ;; sha-1 hashes are 40 hexadecimal symbols.

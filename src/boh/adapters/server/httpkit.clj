@@ -1,6 +1,6 @@
-(ns blox-machina.adapters.server.httpkit
-  (:require [blox-machina.repository-proxy :as rp]
-            [blox-machina.transit :refer [transit-readers transit-writers]]
+(ns boh.adapters.server.httpkit
+  (:require [boh.repository-proxy :as rp]
+            [boh.transit :refer [transit-readers transit-writers]]
             [clojure.core.async :as a]
             [cognitect.transit :as transit]
             [org.httpkit.server :as httpkit]
@@ -9,7 +9,7 @@
             [ring.middleware.transit :refer [wrap-transit-params]]
             [ring.middleware.cors :refer [wrap-cors]]
             [org.httpkit.server :as httpkit]
-            [blox-machina.repository :as r]))
+            [boh.repository :as r]))
 
 ;; Need some helpers for asynchronous responses since middleware won't
 ;; help us :(
