@@ -89,25 +89,28 @@
   (->> (select-upstreamed-keys m upstream-name)
        (normalize-keys)))
 
-(defn- swap-upstream-version!
-  [ref version upstream-name]
-  (let [upstream-version (upstream-keys version upstream-name)]
-    (rr/swap-step! ref :upsteam-version r/upsert-branches upstream-version)))
-
 (defn- swap-upstream-diff!
   [ref diff upstream-name]
-  (let [upstream-diff (update diff :heads upstream-keys upstream-name)]
-    (if-not (r/adjacent? (:heads @ref) (r/bases upstream-diff))
-      (println "refusing to swap in non adjacent upstream diff: "
-               upstream-diff)
-      (rr/swap-step! ref :upstream-diff r/step upstream-diff))))
+  (let [upstreamed-diff (update diff :heads upstream-keys upstream-name)]
+    (if (r/contains-version? @ref (r/bases upstreamed-diff))
+      (rr/swap-step! ref :upstream-diff r/step upstreamed-diff)
+      (println (str "you seem to be behind "
+                    upstream-name
+                    ", perhaps you should pull?")))))
 
 (defn pull-upstream!
   "Pull from a named upstream repository."
   [ref proxy upstream-name]
   (go (let [upstream-version (upstream-version (:heads @ref) upstream-name)
-            diff (a/<! (rp/pull proxy upstream-version))]
-        (swap-upstream-diff! ref diff upstream-name))))
+            upstream-diff (a/<! (rp/pull proxy upstream-version))]
+        (swap-upstream-diff! ref upstream-diff upstream-name))))
+
+(defn pull-rebase-upstream!
+  "Pull from a named upstream repository and rebase the paired normal
+  branches"
+  [ref proxy upstream-name]
+  (go (let [_ (a/<! (pull-upstream! ref proxy upstream-name))]
+        (rr/swap-step! ref :diff rebase-pairs upstream-name))))
 
 (defn push-upstream!
   "Push to a named upstream repository."
@@ -116,16 +119,14 @@
             upstream-version (upstream-version heads upstream-name)
             normalized-repo (apply r/narrow repo (normalized-keys heads))
             diff (r/diff normalized-repo upstream-version)
-            version (a/<! (rp/push proxy diff))]
-        (if (r/contains-version? repo version)
-          (swap-upstream-version! ref version upstream-name)
-          (println "something seems amiss, perhaps you should pull!")))))
+            upstream-diff (a/<! (rp/push proxy diff))]
+        (swap-upstream-diff! ref upstream-diff upstream-name))))
 
-(defn pull-rebase-upstream!
-  "Pull from a named upstream repository and rebase the paired normal
+(defn push-rebase-upstream!
+  "Push to a named upstream repository and rebase the paired normal
   branches"
   [ref proxy upstream-name]
-  (go (let [_ (a/<! (pull-upstream! ref proxy upstream-name))]
+  (go (let [_ (a/<! (push-upstream! ref proxy upstream-name))]
         (rr/swap-step! ref :diff rebase-pairs upstream-name))))
 
 (defn auto-pull-rebase-upstream!
@@ -145,6 +146,6 @@
   [ref proxy upstream-name]
   (let [ch (rr/listen! ref :diff)]
     (go-loop []
-      (when-some [diff (a/<! ch)]
+      (when-some [step (a/<! ch)]
         (a/<! (push-upstream! ref proxy upstream-name))
         (recur)))))

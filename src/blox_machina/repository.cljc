@@ -4,7 +4,7 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]))
 
-(s/def ::branch (comp (partial = "-") namespace))
+(s/def ::branch (comp #{"-" "*"} namespace))
 (s/def ::ref (s/or :hash (s/nilable ::b/hash) :branch ::branch))
 (s/def ::heads (s/map-of ::branch (s/nilable ::b/hash)))
 (s/def ::blocks (s/map-of ::b/hash ::b/block))
@@ -93,6 +93,17 @@
 (defn step [repo diff]
   (RepositoryStep. repo diff (merge-repos repo diff)))
 
+(defn clean [repo]
+  ;; check for nil'ed heads here - which is a bit of a hack but the
+  ;; only way to support branch deletion right now
+  (update repo :heads (fn [m] (into {} (filter (comp m first)) m))))
+
+(defn clean-step [step]
+  ;; really should make a more explicit RepositoryStep primitive.
+  (-> step
+      (update :diff clean)
+      (update :repo-after clean)))
+
 (defn join-step
   "Join a previous step with the result of a new step. Use this to
   gradually build a more complex step by aggregating multiple simpler
@@ -128,13 +139,13 @@
 (defn upsert-branch
   "Change a branches head. If the branch does not exist, adds the branch
   to the repository."
-  [repo branch hash]
-  (step repo (head-diff {branch hash})))
+  [repo branch ref]
+  (step repo (head-diff {branch (resolve-ref repo ref)})))
 
 (defn upsert-branches
   "Upsert multiple branches in one step by supplying a heads map."
   [repo heads]
-  (step repo (head-diff heads)))
+  (step repo (head-diff (reduce (fn [m [b r]] (assoc m b (resolve-ref repo r))) {} heads))))
 
 (defn delete-branch
   "Remove the branch from the repo. This does not remove any blocks."
@@ -187,18 +198,13 @@
     (-> (add-blocks repo rebased-blocks)
         (join-step upsert-branch branch (b/tip rebased-blocks)))))
 
-(defn merge-branch
-  "Merge a branch into another. This removes the branch from the
-  repository."
+(defn rebase-merge-branch
+  "Rebase a branch onto another, and merges. This removes the branch
+  from the repository."
   [repo branch-into branch]
-  (let [anc (branch-point repo branch-into branch)
-        blocks (chain repo branch anc)
-        ;; all merging just follows a rebase technique right now
-        rebased-blocks (b/rebase blocks (resolve-ref repo branch-into))]
-    (-> repo
-        (add-blocks rebased-blocks)
-        (join-step upsert-branch branch-into (b/tip rebased-blocks))
-        (join-step delete-branch branch))))
+  (-> (rebase-branch repo branch-into branch)
+      (join-step upsert-branch branch-into branch)
+      (join-step delete-branch branch)))
 
 (defn with-intersection
   "Update map a with the intersection from map b."
@@ -246,4 +252,4 @@
 (defn contains-version?
   "Naive check to see if a repo contains a version of heads."
   [repo version]
-  (every? (:blocks repo) (vals version)))
+  (every? (:blocks repo) (filter some? (vals version))))

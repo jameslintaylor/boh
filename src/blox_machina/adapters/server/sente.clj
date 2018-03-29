@@ -66,7 +66,7 @@
         (when-some [diff (a/<! ch)]
           (push-fn diff)
           (recur))))
-    
+
     ;; start listening for events over chsk
     (sente/start-server-chsk-router! ch-recv
                                      (comp handle-msg!

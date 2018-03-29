@@ -96,12 +96,15 @@
     [:div#pull-button.control-button
      {:on-click (partial u/pull-upstream! *repo remote "origin")}
      "pull"]
-    [:div#push-button.control-button
-     {:on-click (partial u/push-upstream! *repo remote "origin")}
-     "push"]
     [:div#pull-rebase-button.control-button
      {:on-click (partial u/pull-rebase-upstream! *repo remote "origin")}
      "pull-rebase"]
+    [:div#push-button.control-button
+     {:on-click (partial u/push-upstream! *repo remote "origin")}
+     "push"]
+    [:div#push-rebase-button.control-button
+     {:on-click (partial u/push-rebase-upstream! *repo remote "origin")}
+     "push-rebase"]
     [:div#autopull-button.control-toggle
      {:on-click (partial u/pull-rebase-upstream! *repo remote "origin")}
      "autopull"]
