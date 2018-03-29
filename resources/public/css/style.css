@@ -83,11 +83,15 @@ b {
     color: white;
     background-color: transparent;
     border: none;
-    border-bottom: 1px solid white;
     transition: all 0.3s;
+    text-align: center;
 }
 
 #block-composer > input:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+#block-composer > input:focus {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -177,3 +181,6 @@ b {
     background-color: rgba(255, 255, 255, 0.3);
 }
 
+#upstream-display {
+    color: gray;
+}

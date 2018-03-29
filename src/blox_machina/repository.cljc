@@ -242,3 +242,8 @@
         chains (map (partial chain repo) tips)
         blocks (into {} (map tag-block (flatten chains)))]
     (Repository. (:heads repo) blocks)))
+
+(defn contains-version?
+  "Naive check to see if a repo contains a version of heads."
+  [repo version]
+  (every? (:blocks repo) (vals version)))

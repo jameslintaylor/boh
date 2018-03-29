@@ -3,11 +3,12 @@
             [blox-machina.upstream :as u]
             [blox-machina.repository :as r]
             [blox-machina.repository-reference :as rr]
-            [blox-machina.adapters.client.http :refer [http-proxy]]))
+            [blox-machina.adapters.client.http :refer [http-proxy]]
+            [blox-machina.adapters.client.sente :refer [sente-proxy]]))
 
 (enable-console-print!)
 
-(def remote (http-proxy "http://localhost:3000"))
+(def remote (sente-proxy "127.0.0.1:3000"))
 (defonce *repo (rr/make-ref))
 (defonce *branch (atom nil))
 
@@ -107,7 +108,7 @@
     [:div#autopush-button.control-toggle
      {:on-click (partial u/pull-rebase-upstream! *repo remote "origin")}
      "autopush"]]
-   [:span
+   [:span#upstream-display
     "from/to/with "
     [:span.active
      "origin"]]])

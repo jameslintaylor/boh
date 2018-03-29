@@ -9,9 +9,9 @@
   {:encoding-opts {:handlers transit-writers}
    :decoding-opts {:handlers transit-readers}})
 
-(defn http-proxy [root & [{:keys [pull-path push-path
+(defn http-proxy [host & [{:keys [pull-path push-path
                                   subscribe-path]}]]
-  (let [make-endpoint (partial str root)
+  (let [make-endpoint (partial str host)
         pull-endpoint (make-endpoint (or pull-path "/pull"))
         push-endpoint (make-endpoint (or pull-path "/push"))]
     (reify RepositoryProxy

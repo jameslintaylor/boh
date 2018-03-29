@@ -117,7 +117,9 @@
             normalized-repo (apply r/narrow repo (normalized-keys heads))
             diff (r/diff normalized-repo upstream-version)
             version (a/<! (rp/push proxy diff))]
-        (swap-upstream-version! ref version upstream-name))))
+        (if (r/contains-version? repo version)
+          (swap-upstream-version! ref version upstream-name)
+          (println "something seems amiss, perhaps you should pull!")))))
 
 (defn pull-rebase-upstream!
   "Pull from a named upstream repository and rebase the paired normal
@@ -126,7 +128,7 @@
   (go (let [_ (a/<! (pull-upstream! ref proxy upstream-name))]
         (rr/swap-step! ref :diff rebase-pairs upstream-name))))
 
-(defn autopull-upstream!
+(defn auto-pull-rebase-upstream!
   "Set up ref to automatically pull changes published from an upstream."
   [ref proxy upstream-name]
   (let [upstream-version (upstream-version (:heads @ref) upstream-name)
@@ -134,10 +136,11 @@
     (go-loop []
       (when-some [diff (a/<! ch)]
         (swap-upstream-diff! ref diff upstream-name)
+        (rr/swap-step! ref :diff rebase-pairs upstream-name)
         (recur)))
     ref))
 
-(defn autopush-upstream!
+(defn auto-push-upstream!
   "Set up ref to automatically push changes to upstream."
   [ref proxy upstream-name]
   (let [ch (rr/listen! ref :diff)]

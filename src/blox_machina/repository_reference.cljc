@@ -2,10 +2,11 @@
   (:refer-clojure :exclude [proxy-name])
   (:require [blox-machina.repository :as r]
             [blox-machina.repository-proxy :refer [RepositoryProxy]]
-            [blox-machina.util :include-macros true :refer [do-with]]
+            #?(:clj [blox-machina.util :refer [do-with]])
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
                :cljs [cljs.core.async :as a]))
-  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]])))
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]
+                            [blox-machina.util :refer [do-with]])))
 
 (defn make-ref
   ([] (make-ref (r/empty-repo)))
@@ -57,6 +58,9 @@
       (do-with [ch (a/chan)]
         (a/put! ch (r/diff @ref version))))
     (push [_ diff]
-      (do-with [ch (a/chan)]
-        (a/put! ch (:heads (swap-step! ref :diff r/step diff)))))
+      (let [heads (:heads @ref)]
+        (do-with [ch (a/chan)]
+          (if (r/adjacent? heads (r/bases diff))
+            (a/put! ch (:heads (swap-step! ref :diff r/step diff)))
+            (a/put! ch heads)))))
     (subscribe [_ version] (listen! ref :diff))))
