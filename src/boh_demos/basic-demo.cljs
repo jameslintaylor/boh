@@ -103,8 +103,8 @@
      {:on-click (partial u/push-upstream! *repo remote "origin")}
      "push"]
     [:div#push-rebase-button.control-button
-     {:on-click (partial u/push-rebase-upstream! *repo remote "origin")}
-     "push-rebase"]
+     {:on-click (partial u/push-revert-upstream! *repo remote "origin")}
+     "push-revert"]
     [:div#autopull-button.control-toggle
      {:on-click (partial u/pull-rebase-upstream! *repo remote "origin")}
      "autopull"]
@@ -117,9 +117,9 @@
      "origin"]]])
 
 (rum/defc root < rum/reactive []
-  (let [{:as repo :keys [blocks heads]} (rum/react *repo)
+  (let [{:as repo :keys [heads]} (rum/react *repo)
         branch (rum/react *branch)
-        chain (r/traverse blocks (heads branch))]
+        chain (r/traverse repo branch)]
     [:div#container
      [:div#lhs
       [:b "THE REPO"]

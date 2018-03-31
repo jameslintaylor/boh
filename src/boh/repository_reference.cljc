@@ -76,11 +76,11 @@
     (r/step repo diff)))
 
 (defn tmp-branch [k]
-  (keyword "*" (name k)))
+  (keyword "-" (str "~" (name k))))
 
 (defn rebase-merge [repo diff]
   (let [bases (r/bases diff)]
-    (when (r/contains-version? repo bases)
+    (when (r/includes? repo bases)
       (println "rebasing merge!")
       (let [tmp-diff (update diff :heads surject-keys tmp-branch)
             pairs (map vector (keys bases) (keys (:heads tmp-diff)))
@@ -88,9 +88,9 @@
             initial (-> (r/step repo (r/diff repo bases))
                         (r/join-step r/step tmp-diff))]
         ;; merge the temporary branches
-        (r/clean-step (reduce (fn [s p]
-                                (apply r/join-step s r/rebase-merge-branch p))
-                              initial pairs))
+        (reduce (fn [s p]
+                  (apply r/join-step s r/rebase-merge-branch p))
+                initial pairs)
         ;; TODO: - prune here
         ))))
 
@@ -123,3 +123,4 @@
      (subscribe [_ version]
        (do-with [ch (a/chan)]
          (a/pipeline 1 ch (map :diff) (listen! ref :diff)))))))
+

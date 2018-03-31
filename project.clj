@@ -4,31 +4,25 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-
-
   :min-lein-version "2.7.1"
 
   :dependencies [[org.clojure/clojure "1.9.0-beta4"]
                  [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/core.async  "0.3.443"]
-                 [rum "0.10.8"]
+                 [com.cognitect/transit-clj "0.8.300"]
+                 [com.cognitect/transit-cljs "0.8.243"]
                  [pandect "0.6.1"]
-                 [datascript "0.16.3"]
-                 [com.taoensso/sente "1.12.0"]
-                 [com.stuartsierra/component "0.3.2"]
                  [http-kit "2.3.0-alpha4"]
                  [compojure "1.6.0"]
-                 [datascript "0.16.3"]
-                 [com.cognitect/transit-clj "0.8.300"]
-                 [datascript-transit "0.2.2"]
-                 [cljs-http "0.1.44"]
-                 [com.cognitect/transit-cljs "0.8.243"]
-                 [compojure "1.6.0"]
-                 [fuck-cors "0.1.7"]
                  [ring-transit "0.1.3"]
                  [ring-json-params "0.1.3"]
                  [ring-cors "0.1.11"]
-                 [com.taoensso/sente "1.12.0"]]
+                 [com.taoensso/sente "1.12.0"]
+                 [com.stuartsierra/component "0.3.2"]
+                 [cljs-http "0.1.44"]
+                 [rum "0.10.8"]
+                 [datascript "0.16.3"]
+                 [datascript-transit "0.2.2"]]
 
   :plugins [[lein-figwheel "0.5.14"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]

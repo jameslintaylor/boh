@@ -1,10 +1,11 @@
 (ns boh.repository
   (:refer-clojure :exclude [merge bases])
   (:require [boh.blocks :as b]
+            [boh.util :refer [keys-containing select-containing]]
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]))
 
-(s/def ::branch (comp #{"-" "*"} namespace))
+(s/def ::branch (comp #{"-" "~"} namespace))
 (s/def ::ref (s/or :hash (s/nilable ::b/hash) :branch ::branch))
 (s/def ::heads (s/map-of ::branch (s/nilable ::b/hash)))
 (s/def ::blocks (s/map-of ::b/hash ::b/block))
@@ -13,75 +14,48 @@
 (defrecord Repository [heads blocks])
 (defrecord RepositoryStep [repo-before diff repo-after])
 
-;; TODO - use an explicit repository difference instead of the current
-;; implicit method of reusing a regular repository.
-(defrecord RepositoryDiff [new-heads new-blocks
-                           removed-heads removed-blocks])
-
-;; TODO - use spec's fdef instead of :pre and :post conditions
+;; as convenience for testing
+(defn -repo-with [& data]
+  (let [chain (apply b/gen-chain (map str data))]
+    (->Repository {:-/master (b/tip chain)}
+                  (into {} (map (juxt :hash identity)) chain))))
 
 (defn empty-repo []
   (->Repository {} {}))
 
-(defn head-diff [heads]
-  (->Repository heads {}))
-
-(defn block-diff [blocks]
-  (->Repository {} blocks))
+(defn identity-diff []
+  (->Repository {} {}))
 
 (defn identity-step [repo]
-  (->RepositoryStep repo (empty-repo) repo))
-
-(defn traverse
-  "Returns a lazy sequence of the blocks along one path in a blocks
-  database."
-  [blocks hash]
-  (let [block (blocks hash)]
-    (when (some? block)
-      (lazy-seq (cons block (traverse blocks (:prev block)))))))
+  (->RepositoryStep repo (identity-diff) repo))
 
 (defn resolve-ref
-  "Resolves a ref to the its corresponding hash."
+  "Resolves a ref to its corresponding hash in a repository."
   [repo ref]
   (case (first (s/conform ::ref ref))
     :branch (get-in repo [:heads ref])
     :hash ref))
+
+(defn- -traverse [blocks hash]
+  (when-some [block (get blocks hash)]
+    (lazy-seq (cons block (-traverse blocks (:prev block))))))
+
+(defn traverse
+  "Returns a lazy sequence of the blocks in a repository by following
+  the path starting at ref."
+  [repo ref]
+  (let [hash (resolve-ref repo ref)]
+    (-traverse (:blocks repo) hash)))
 
 (defn chain
   "Retrieve the chain whom's tip is at ref-tip and base is at ref-base.
   O(n)."
   ([repo ref-tip] (chain repo ref-tip nil))
   ([repo ref-tip ref-base]
-   (let [hash-tip (resolve-ref repo ref-tip)
-         hash-base (resolve-ref repo ref-base)]
-     (->> (traverse (:blocks repo) hash-tip)
+   (let [hash-base (resolve-ref repo ref-base)]
+     (->> (traverse repo ref-tip)
           (take-while (comp (partial not= hash-base) :hash))
           reverse))))
-
-(defn branches [repo]
-  (keys (:heads repo)))
-
-(defn base
-  "Find the base of a branch by fully traversing its chain. If no 'tip'
-  block exists, for a branch (right now only used symbolically as part
-  of a diff), then the base is just the head."
-  [repo branch]
-  (let [hash (get-in repo [:heads branch])]
-    (if (nil? (get-in repo [:blocks hash]))
-      hash
-      (-> (:blocks repo) (traverse hash) last :prev))))
-
-(defn bases
-  "Compute the base for each branch in a repo. Note that this causes
-  each branch to be traversed in full."
-  [repo]
-  (into {} (map (juxt identity (partial base repo))) (branches repo)))
-
-(defn adjacent?
-  "Return true iff the bases are adjacent to the heads. This is not
-  strictly `=` since it should tolerate missing branches."
-  [heads bases]
-  (every? (fn [[branch base]] (= base (heads branch))) bases))
 
 (defn merge-repos
   "Naively merge two repos, giving precedence to the second."
@@ -90,19 +64,66 @@
       (update :heads into (:heads repo))
       (update :blocks into (:blocks repo))))
 
+(defn apply-diff
+  "Apply a diff to a repository."
+  [repo diff]
+  (let [{:keys [heads blocks]} diff]
+    (-> repo
+        (update :heads into (select-containing some? heads))
+        (update :blocks into (select-containing some? blocks))
+        (update :heads (partial apply dissoc) (keys-containing nil? heads))
+        (update :blocks (partial apply dissoc) (keys-containing nil? blocks)))))
+
+(defn version-diff
+  "Find the difference between two versions."
+  [version prev-version]
+  (reduce (fn [m [b h]] (assoc m b (m b))) version prev-version))
+
+(defn block-diff
+  "Find the blocks added to the repo since the version."
+  [repo prev-version]
+  (let [backwards-diff (version-diff prev-version (:heads repo))]
+    (into {} (comp (map (partial apply chain repo))
+                   (mapcat identity)
+                   (map (juxt :hash identity)))
+          backwards-diff)))
+
+(defn diff
+  "Calculate the diff between a repo and a previous version."
+  [repo prev-version]
+  (->Repository (version-diff (:heads repo) prev-version)
+                (block-diff repo prev-version)))
+
+(defn base
+  "Find the base of a branch by fully traversing its chain. If a branch
+  points to a head that does not exist in the repo then the base is
+  the head."
+  [repo branch]
+  (let [head (get-in repo [:heads branch])]
+    (if (nil? (get-in repo [:blocks head]))
+      head
+      (-> (traverse repo head) last :prev))))
+
+(defn bases
+  "Compute the base for each branch in a repo. This causes each branch
+  to be traversed in full."
+  [repo]
+  (into {} (map (juxt identity (partial base repo))) (keys (:heads repo))))
+
+(defn adjacent?
+  "Returns true iff the bases are adjacent to the heads. This is not
+  strictly `=` since it should tolerate missing branches."
+  [heads bases]
+  (every? (fn [[branch base]] (= base (heads branch))) bases))
+
+(defn includes?
+  "Returns true iff a repo includes/contains a version. Loosely this
+  could be interpreted as a repo being a successor of the version."
+  [repo version]
+  (every? (:blocks repo) (filter some? (vals version))))
+
 (defn step [repo diff]
-  (RepositoryStep. repo diff (merge-repos repo diff)))
-
-(defn clean [repo]
-  ;; check for nil'ed heads here - which is a bit of a hack but the
-  ;; only way to support branch deletion right now
-  (update repo :heads (fn [m] (into {} (filter (comp m first)) m))))
-
-(defn clean-step [step]
-  ;; really should make a more explicit RepositoryStep primitive.
-  (-> step
-      (update :diff clean)
-      (update :repo-after clean)))
+  (RepositoryStep. repo diff (apply-diff repo diff)))
 
 (defn join-step
   "Join a previous step with the result of a new step. Use this to
@@ -115,42 +136,34 @@
                      (merge-repos diff (:diff next-step))
                      (:repo-after next-step))))
 
-(defn part-step
-  "Partially joined step, returns a function from step -> step. The idea
-  is that this will make joining step via something like comp easier
-  than writing (partial join-step ...)"
-  [step-fn & args]
-  (fn [step] (apply join-step step step-fn args)))
+;; STEP FUNCTIONS
 
 (defn add-block
   "Add a single block to the repository."
   [repo block]
-  (step repo (block-diff {(:hash block) block})))
-
-(defn tag-block [block]
-  [(:hash block) block])
+  (step repo (->Repository {} {(:hash block) block})))
 
 (defn add-blocks
   "Bulk add multiple blocks to the repository."
   [repo blocks]
-  (let [blocks (into {} (map tag-block) blocks)]
-    (step repo (block-diff blocks))))
+  (let [blocks (into {} (map (juxt :hash identity)) blocks)]
+    (step repo (->Repository {} blocks))))
 
 (defn upsert-branch
   "Change a branches head. If the branch does not exist, adds the branch
   to the repository."
   [repo branch ref]
-  (step repo (head-diff {branch (resolve-ref repo ref)})))
+  (step repo (->Repository {branch (resolve-ref repo ref)} {})))
 
 (defn upsert-branches
   "Upsert multiple branches in one step by supplying a heads map."
   [repo heads]
-  (step repo (head-diff (reduce (fn [m [b r]] (assoc m b (resolve-ref repo r))) {} heads))))
+  (step repo (->Repository (reduce (fn [m [b r]] (assoc m b (resolve-ref repo r))) {} heads) {})))
 
 (defn delete-branch
   "Remove the branch from the repo. This does not remove any blocks."
   [repo branch]
-  (step repo (head-diff {branch nil})))
+  (step repo (->Repository {branch nil} {})))
 
 (defn graft-block
   "'Move' a branches head forward by a single block. The block must be
@@ -180,13 +193,9 @@
   "Find the branch-point (the greatest common ancestor) between two
   branches in a repository."
   [repo ref1 ref2]
-  (let [block-database (:blocks repo)
-        hash1 (resolve-ref repo ref1)
-        hash2 (resolve-ref repo ref2)
-        blocks1 (map :hash (traverse block-database hash1))
-        blocks2 (map :hash (traverse block-database hash2))
-        members1 (apply hash-set blocks1)]
-    (some members1 blocks2)))
+  (let [blocks1 (map :hash (traverse repo ref1))
+        blocks2 (map :hash (traverse repo ref2))]
+    (some (apply hash-set blocks1) blocks2)))
 
 (defn rebase-branch
   "Rebase one branch onto another. This does not remove any of the old
@@ -206,34 +215,7 @@
       (join-step upsert-branch branch-into branch)
       (join-step delete-branch branch)))
 
-(defn with-intersection
-  "Update map a with the intersection from map b."
-  [a b]
-  (reduce-kv
-   (fn [m k v]
-     (assoc m k (or (b k) v)))
-   {} a))
-
-(defn hydrate-version
-  "'Hydrate' a potentially incomplete specification of a previous
-  version with the missing branches from a reference version."
-  [prev-version ref-version]
-  (-> (into {} (map vector (keys ref-version) (repeat nil)))
-      (with-intersection prev-version)))
-
-(defn new-blocks
-  [repo version]
-  (let [tf (comp (map (partial apply chain repo))
-                 (map (partial map tag-block)))
-        tagged-blocks (apply concat (into [] tf version))]
-    (into {} tagged-blocks)))
-
-(defn diff
-  "Compute a naive diff since a previous version of the repo."
-  [repo prev-version]
-  (let [heads (:heads repo)
-        version (hydrate-version prev-version heads)]
-    (Repository. heads (new-blocks repo version))))
+;; CLEANING
 
 (defn narrow
   "Narrow a repository to only contain the branches specified."
@@ -246,10 +228,7 @@
   (let [{:keys [heads blocks]} repo
         tips (map second heads)
         chains (map (partial chain repo) tips)
-        blocks (into {} (map tag-block (flatten chains)))]
+        blocks (into {} (map (juxt :hash identity)) (flatten chains))]
     (Repository. (:heads repo) blocks)))
 
-(defn contains-version?
-  "Naive check to see if a repo contains a version of heads."
-  [repo version]
-  (every? (:blocks repo) (filter some? (vals version))))
+
