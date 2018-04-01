@@ -157,3 +157,12 @@
       (when-some [step (a/<! ch)]
         (a/<! (push-upstream! ref proxy upstream-name))
         (recur)))))
+
+(defn auto-push-revert-upstream!
+  "Set up ref to automatically push changes to upstream and revert."
+  [ref proxy upstream-name]
+  (let [ch (rr/listen! ref :step)]
+    (go-loop []
+      (when-some [step (a/<! ch)]
+        (a/<! (push-revert-upstream! ref proxy upstream-name))
+        (recur)))))

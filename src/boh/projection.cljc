@@ -19,8 +19,9 @@
                                  (r/traverse repo-after new-head))
                            (reverse))
                 cached (get cache (:prev (first blocks)))]
-            (vswap! *cache assoc new-head
-                   (reset! *v (transduce (map :data) reducing-fn
-                                         (or cached (reducing-fn)) blocks)))))
+            (when (some? blocks)
+              (vswap! *cache assoc new-head
+                      (reset! *v (transduce (map :data) reducing-fn
+                                            (or cached (reducing-fn)) blocks))))))
         (recur)))
     *v))

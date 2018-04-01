@@ -36,14 +36,14 @@
                 ;; The presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
-                :figwheel {:on-jsload "boh-demos.basic-demo/on-js-reload"
+                :figwheel {:on-jsload "boh-demos.string-demo/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has
                            ;; started and compiled your application.
                            ;; Comment this out once it no longer serves you.
                            :open-urls ["http://localhost:3449/index.html"]}
 
-                :compiler {:main boh-demos.basic-demo
+                :compiler {:main boh-demos.string-demo
                            :asset-path "js/compiled/out"
                            :output-to "resources/public/js/compiled/main.js"
                            :output-dir "resources/public/js/compiled/out"
