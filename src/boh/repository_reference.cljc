@@ -56,7 +56,7 @@
 (defn commit!
   ([ref data] (commit! ref :-/master data))
   ([ref branch data]
-   (swap-step! ref :diff r/commit branch data)))
+   (swap-step! ref :step r/commit branch data)))
 
 (defn ordered-merge-fn
   "Combine multiple merge strategies into one by taking the result of
@@ -119,8 +119,7 @@
          (a/put! ch (r/diff @ref version))))
      (push [_ diff]
        (do-with [ch (a/chan)]
-         (a/put! ch (:diff (swap-step! ref :diff merge-fn diff)))))
+         (a/put! ch (:diff (swap-step! ref :step merge-fn diff)))))
      (subscribe [_ version]
        (do-with [ch (a/chan)]
-         (a/pipeline 1 ch (map :diff) (listen! ref :diff)))))))
-
+         (a/pipeline 1 ch (map :diff) (listen! ref :step)))))))

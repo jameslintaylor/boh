@@ -3,6 +3,7 @@
             [boh.upstream :as u]
             [boh.repository :as r]
             [boh.repository-reference :as rr]
+            [boh.projection :as p]
             [boh.adapters.client.http :refer [http-proxy]]
             [boh.adapters.client.sente :refer [sente-proxy]]))
 
@@ -11,6 +12,7 @@
 (def remote (sente-proxy "127.0.0.1:3000"))
 (defonce *repo (rr/make-ref))
 (defonce *branch (atom nil))
+(defonce *p (p/projection *repo :-/master str))
 
 (defn display-hash [hash]
   (if (nil? hash)

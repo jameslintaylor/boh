@@ -101,7 +101,7 @@
   [ref diff upstream-name]
   (let [upstreamed-diff (update diff :heads upstream-keys upstream-name)]
     (if (r/includes? @ref (r/bases upstreamed-diff))
-      (rr/swap-step! ref :upstream-diff r/step upstreamed-diff)
+      (rr/swap-step! ref :upstream-step r/step upstreamed-diff)
       (println (str "you seem to be behind "
                     upstream-name
                     ", perhaps you should pull?")))))
@@ -118,7 +118,7 @@
   branches"
   [ref proxy upstream-name]
   (go (let [_ (a/<! (pull-upstream! ref proxy upstream-name))]
-        (rr/swap-step! ref :diff rebase-pairs upstream-name))))
+        (rr/swap-step! ref :step rebase-pairs upstream-name))))
 
 (defn push-upstream!
   "Push to a named upstream repository."
@@ -135,7 +135,7 @@
   branches to upstream."
   [ref proxy upstream-name]
   (go (let [_ (a/<! (push-upstream! ref proxy upstream-name))]
-        (rr/swap-step! ref :diff revert-pairs upstream-name))))
+        (rr/swap-step! ref :step revert-pairs upstream-name))))
 
 (defn auto-pull-rebase-upstream!
   "Set up ref to automatically pull changes published from an upstream."
@@ -145,14 +145,14 @@
     (go-loop []
       (when-some [diff (a/<! ch)]
         (swap-upstream-diff! ref diff upstream-name)
-        (rr/swap-step! ref :diff rebase-pairs upstream-name)
+        (rr/swap-step! ref :step rebase-pairs upstream-name)
         (recur)))
     ref))
 
 (defn auto-push-upstream!
   "Set up ref to automatically push changes to upstream."
   [ref proxy upstream-name]
-  (let [ch (rr/listen! ref :diff)]
+  (let [ch (rr/listen! ref :step)]
     (go-loop []
       (when-some [step (a/<! ch)]
         (a/<! (push-upstream! ref proxy upstream-name))
