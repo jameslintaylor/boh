@@ -1,186 +1,30 @@
 html, * {
-    background-color: black;
-    color: white;
+    background-color: white;
+    color: black;
     margin: 0;
+    font-family: 'Fira Mono';
 }
 
 #container {
-    padding-top: 10px;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-}
-
-b {
-    font-size: 1em;
-    background-color: transparent;
-}
-
-#lhs {
-    margin-left: 10px;
-    display: flex;
-    flex-direction: column;
-}
-
-#lhs > b {
-    color: red;
-}
-
-#rhs {
-    margin-right: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-#rhs > b {
-    color: pink;
-}
-
-#branch-switcher {
-    margin-top: 4px;
-}
-
-#branch-dropdown {
-    cursor: pointer;
-}
-
-#branch-dropdown > #active {
-    padding: 3px;
-    color: orange;
-    border-radius: 2px;
-    border: 1px solid orange;
-}
-
-#branch-dropdown > .hidden {
-    padding: 4px;
-    background-color: black;
-    color: gray;
-    opacity: 0.7;
-    transition: all 0.2s;
-}
-
-#branch-dropdown > .hidden:hover {
-    color: white;
-}
-
-#branch-dropdown:hover > .hidden {
-    opacity: 1;
-}
-
-#block-composer {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 10px;
-    padding: 4px;
-    width: 390px;
-    border: 1px solid orange;
-}
-
-#block-composer > input {
-    margin-left: 2px;
-    color: white;
-    background-color: transparent;
-    border: none;
-    transition: all 0.3s;
-    text-align: center;
-}
-
-#block-composer > input:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#block-composer > input:focus {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#commit-button {
-    color: orange;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-#commit-button:hover {
-    color: white;
-}
-
-#chain-display {
-    margin-top: 5px;
-}
-
-#more-blocks {
-    color: gray;
-    width: 400px;
-    text-align: right;
-}
-
-.block-display {
-    width: 400px;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between
-}
-
-.upstream-list {
     position: absolute;
-    left: 420px;
-    color: pink;
-}
-
-#upstream-control {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-#upstream-control .active {
-    padding: 2px;
-    color: pink;
-    border: 1px solid pink;
-    border-radius: 2px;
-}
-
-#upstream-control span {
-    margin-top: 10px;
-}
-
-#upstream-control-buttons, #upstream-control-toggles {
-    margin-top: 5px;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
+    justify-content: center;
+    align-items: center;
 }
 
-.control-button {
-    padding: 3px;
-    color: white;
-    border-radius: 2px;
-    margin-left: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
+#compose {
+    width: 800px;
+    height: 300px;
+    color: #666;
+    background-color: #fff;
+    border: none;
+    font-size: 22px;
+    transition: background-color 0.2s;
 }
 
-.control-button:hover {
-    padding: 2px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border: 1px solid white;
-}
-
-.control-toggle {
-    padding: 3px;
-    color: white;
-    border: 1px solid white;
-    border-radius: 2px;
-    margin-left: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.control-toggle:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
-#upstream-display {
-    color: gray;
+#compose:hover, #compose:focus {
+    background-color: #eee;
 }
