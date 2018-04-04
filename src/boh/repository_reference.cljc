@@ -53,10 +53,8 @@
       (-broadcast-event! ref event-type step))
     step))
 
-(defn commit!
-  ([ref data] (commit! ref :-/master data))
-  ([ref branch data]
-   (swap-step! ref :diff r/commit branch data)))
+(defn commit! [ref branch & data]
+  (apply swap-step! ref :step r/commit branch data))
 
 (defn ordered-merge-fn
   "Combine multiple merge strategies into one by taking the result of
@@ -76,11 +74,11 @@
     (r/step repo diff)))
 
 (defn tmp-branch [k]
-  (keyword "*" (name k)))
+  (keyword "-" (str "~" (name k))))
 
 (defn rebase-merge [repo diff]
   (let [bases (r/bases diff)]
-    (when (r/contains-version? repo bases)
+    (when (r/includes? repo bases)
       (println "rebasing merge!")
       (let [tmp-diff (update diff :heads surject-keys tmp-branch)
             pairs (map vector (keys bases) (keys (:heads tmp-diff)))
@@ -88,9 +86,9 @@
             initial (-> (r/step repo (r/diff repo bases))
                         (r/join-step r/step tmp-diff))]
         ;; merge the temporary branches
-        (r/clean-step (reduce (fn [s p]
-                                (apply r/join-step s r/rebase-merge-branch p))
-                              initial pairs))
+        (reduce (fn [s p]
+                  (apply r/join-step s r/rebase-merge-branch p))
+                initial pairs)
         ;; TODO: - prune here
         ))))
 
@@ -119,7 +117,7 @@
          (a/put! ch (r/diff @ref version))))
      (push [_ diff]
        (do-with [ch (a/chan)]
-         (a/put! ch (:diff (swap-step! ref :diff merge-fn diff)))))
+         (a/put! ch (:diff (swap-step! ref :step merge-fn diff)))))
      (subscribe [_ version]
        (do-with [ch (a/chan)]
-         (a/pipeline 1 ch (map :diff) (listen! ref :diff)))))))
+         (a/pipeline 1 ch (map :diff) (listen! ref :step)))))))

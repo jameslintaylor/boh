@@ -34,6 +34,8 @@
   [{:keys [id]}]
   (println (format "server unhandled event: %s" id)))
 
+(defmethod handle-msg! :chsk/ws-ping [_])
+
 (defmethod handle-msg! :upstream/pull
   [{:keys [proxy ?data ?reply-fn]}]
   (let [version (:version ?data)]

@@ -23,8 +23,21 @@
        sha1
        keyword))
 
-(defn surject-keys [m f & args]
+(defn surject-keys
+  "Return the map obtained by transforming all keys in the original map
+  by a function `f`."
+  [m f & args]
   (reduce-kv (fn [m k v] (assoc m (apply f k args) v)) {} m))
+
+(defn select-containing
+  "Select the keys in a map whom's values satisfy `pred`."
+  [pred m]
+  (into {} (filter (comp pred second)) m))
+
+(defn keys-containing
+  "Retrieve a set of keys in a map whom's values satisfy `pred`."
+  [pred m]
+  (into #{} (comp (filter (comp pred second)) (map first)) m))
 
 (defmacro ^{:style/indent 1}
   do-with [[sym expression] & body]

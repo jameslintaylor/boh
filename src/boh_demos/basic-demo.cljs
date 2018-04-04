@@ -3,6 +3,7 @@
             [boh.upstream :as u]
             [boh.repository :as r]
             [boh.repository-reference :as rr]
+            [boh.projection :as p]
             [boh.adapters.client.http :refer [http-proxy]]
             [boh.adapters.client.sente :refer [sente-proxy]]))
 
@@ -11,6 +12,7 @@
 (def remote (sente-proxy "127.0.0.1:3000"))
 (defonce *repo (rr/make-ref))
 (defonce *branch (atom nil))
+(defonce *p (p/projections! *repo (map identity) str))
 
 (defn display-hash [hash]
   (if (nil? hash)
@@ -103,8 +105,8 @@
      {:on-click (partial u/push-upstream! *repo remote "origin")}
      "push"]
     [:div#push-rebase-button.control-button
-     {:on-click (partial u/push-rebase-upstream! *repo remote "origin")}
-     "push-rebase"]
+     {:on-click (partial u/push-revert-upstream! *repo remote "origin")}
+     "push-revert"]
     [:div#autopull-button.control-toggle
      {:on-click (partial u/pull-rebase-upstream! *repo remote "origin")}
      "autopull"]
@@ -117,9 +119,9 @@
      "origin"]]])
 
 (rum/defc root < rum/reactive []
-  (let [{:as repo :keys [blocks heads]} (rum/react *repo)
+  (let [{:as repo :keys [heads]} (rum/react *repo)
         branch (rum/react *branch)
-        chain (r/traverse blocks (heads branch))]
+        chain (r/traverse repo branch)]
     [:div#container
      [:div#lhs
       [:b "THE REPO"]

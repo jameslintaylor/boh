@@ -1,186 +1,157 @@
-html, * {
-    background-color: black;
-    color: white;
+html {
+    background-color: #ddd;
+    color: black;
     margin: 0;
+    font-family: 'Fira Mono';
+}
+
+input {
+    font-family: 'Fira Mono';
+    border: 2px inset white;
 }
 
 #container {
-    padding-top: 10px;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-}
-
-b {
-    font-size: 1em;
-    background-color: transparent;
-}
-
-#lhs {
-    margin-left: 10px;
-    display: flex;
-    flex-direction: column;
-}
-
-#lhs > b {
-    color: red;
-}
-
-#rhs {
-    margin-right: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-#rhs > b {
-    color: pink;
-}
-
-#branch-switcher {
-    margin-top: 4px;
-}
-
-#branch-dropdown {
-    cursor: pointer;
-}
-
-#branch-dropdown > #active {
-    padding: 3px;
-    color: orange;
-    border-radius: 2px;
-    border: 1px solid orange;
-}
-
-#branch-dropdown > .hidden {
-    padding: 4px;
-    background-color: black;
-    color: gray;
-    opacity: 0.7;
-    transition: all 0.2s;
-}
-
-#branch-dropdown > .hidden:hover {
-    color: white;
-}
-
-#branch-dropdown:hover > .hidden {
-    opacity: 1;
-}
-
-#block-composer {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 10px;
-    padding: 4px;
-    width: 390px;
-    border: 1px solid orange;
-}
-
-#block-composer > input {
-    margin-left: 2px;
-    color: white;
-    background-color: transparent;
-    border: none;
-    transition: all 0.3s;
-    text-align: center;
-}
-
-#block-composer > input:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#block-composer > input:focus {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#commit-button {
-    color: orange;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-#commit-button:hover {
-    color: white;
-}
-
-#chain-display {
-    margin-top: 5px;
-}
-
-#more-blocks {
-    color: gray;
-    width: 400px;
-    text-align: right;
-}
-
-.block-display {
-    width: 400px;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between
-}
-
-.upstream-list {
     position: absolute;
-    left: 420px;
-    color: pink;
-}
-
-#upstream-control {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-#upstream-control .active {
-    padding: 2px;
-    color: pink;
-    border: 1px solid pink;
-    border-radius: 2px;
-}
-
-#upstream-control span {
-    margin-top: 10px;
-}
-
-#upstream-control-buttons, #upstream-control-toggles {
-    margin-top: 5px;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
+    justify-content: center;
+    align-items: center;
 }
 
-.control-button {
-    padding: 3px;
-    color: white;
-    border-radius: 2px;
-    margin-left: 5px;
+#upstream-area {
+    width: 320px;
+    height: 306px;
+    font-size: 14px;
+}
+
+.upstream {
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    color: #555;
+}
+
+.upstream-name {
+    width: 70px;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upstream-url > input{
+    width: 150px;
+    margin-left: 2px;
+}
+
+#upstream-area button {
+    padding: 0;
+    margin-left: 3px;
+    width: 20px;
+    border: 2px outset white;
+    font-weight: bold;
+    color: #555;
+}
+
+#upstream-area button.active {
+    color: green;
+    border: 2px inset white;
+    animation: active-pulse 3s infinite;
+}
+
+#new-upstream {
+    display: flex;
+}
+
+#new-upstream > input {
+    margin-left: 3px;
+    background-color: #eee;
+    color: #555;
+    flex-grow: 1;
+    font-weight: bold;
+}
+
+#room-area {
+    height: 306px;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+#branches-area {
+    margin-left: 10px;
+    height: 306px;
+}
+
+#branches-area > input {
+    width: 100px;
+}
+
+#me > input {
+    width: 100px;
+    font-weight: bold;
+}
+
+#me > input:hover, #me > input:focus {
+    background-color: #eee;
+}
+
+#color-selector {
+    width: 20px;
+    margin-left: 4px;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
-.control-button:hover {
-    padding: 2px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border: 1px solid white;
+#color-selector:hover {
+    background-color: white;
 }
 
-.control-toggle {
-    padding: 3px;
+#text-area {
+    width: 200px;
+    height: 300px;
+    margin-left: 10px;
+    color: #666;
+    cursor: text;
+    border: 2px inset white;
+    outline: 0;
+    white-space: pre-wrap;
+}
+
+#text-area:hover, #text-area:focus {
+    background-color: #eee;
+}
+
+#text-area:hover > .subs {
+    background-color: #eee;
+}
+
+#text-area:focus > .subs {
+    background-color: #eee;
+}
+
+#cursor {
     color: white;
-    border: 1px solid white;
-    border-radius: 2px;
-    margin-left: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
+    background-color: black;
+    /* animation: cursor-blink 1s infinite; */
+    /* animation-timing-function: steps(1, end); */
 }
 
-.control-toggle:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+.cursor-popup {
+    display: none;
+    font-weight: bold;
 }
 
-#upstream-display {
-    color: gray;
+#cursor:hover > .cursor-popup{
+    display: inline;
+}
+
+@keyframes active-pulse {
+    0% { color: black; background-color: #eee; }
+    50% { color: #f00; background-color: #cfd; }
+    100% { color: black; background-color: #eee; }
+}
+
+@keyframes cursor-blink {
+    0% { color: white; background-color: black; }
+    50% { color: black; background-color: white; }
 }

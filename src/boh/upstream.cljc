@@ -2,6 +2,7 @@
   (:require [clojure.string :as s]
             [boh.repository :as r]
             [boh.repository-proxy :as rp]
+            [boh.branches :as b]
             [boh.repository-reference :as rr]
             [boh.util :refer [surject-keys #?(:clj go-let)]]
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
@@ -77,11 +78,31 @@
        (group-by (comp upstream-name first))))
 
 (defn rebase-pairs
-  "rebase branches of a database onto their qualified and upstream
+  "rebase normalized branches onto their qualified and upstream
   counterparts."
   [repo upstream-name]
   (let [pairs (get (pairs (:heads repo)) upstream-name)]
     (reduce (fn [s pair] (apply r/join-step s r/rebase-branch pair))
+            (r/identity-step repo) pairs)))
+
+(defn revert-pairs
+  "revert normalized branches to their qualified and upstream
+  counterparts."
+  [repo upstream-name]
+  (let [pairs (get (pairs (:heads repo)) upstream-name)]
+    (reduce (fn [s [u n]] (r/join-step s r/upsert-branch n u))
+            (r/identity-step repo) pairs)))
+
+(defn revert-divergent-pairs
+  "Like `revert-pairs` but only revert if the upstream is not a
+  ancestor of the normalized branch.."
+  [repo upstream-name]
+  (let [heads (:heads repo)
+        pairs (get (pairs heads) upstream-name)]
+    (reduce (fn [s [u n]]
+              (if (b/descendants? repo u n)
+                s
+                (r/join-step s r/upsert-branch n u)))
             (r/identity-step repo) pairs)))
 
 (defn upstream-version
@@ -92,8 +113,8 @@
 (defn- swap-upstream-diff!
   [ref diff upstream-name]
   (let [upstreamed-diff (update diff :heads upstream-keys upstream-name)]
-    (if (r/contains-version? @ref (r/bases upstreamed-diff))
-      (rr/swap-step! ref :upstream-diff r/step upstreamed-diff)
+    (if (r/includes? @ref (r/bases upstreamed-diff))
+      (rr/swap-step! ref :upstream-step r/step upstreamed-diff)
       (println (str "you seem to be behind "
                     upstream-name
                     ", perhaps you should pull?")))))
@@ -110,7 +131,7 @@
   branches"
   [ref proxy upstream-name]
   (go (let [_ (a/<! (pull-upstream! ref proxy upstream-name))]
-        (rr/swap-step! ref :diff rebase-pairs upstream-name))))
+        (rr/swap-step! ref :step rebase-pairs upstream-name))))
 
 (defn push-upstream!
   "Push to a named upstream repository."
@@ -122,12 +143,12 @@
             upstream-diff (a/<! (rp/push proxy diff))]
         (swap-upstream-diff! ref upstream-diff upstream-name))))
 
-(defn push-rebase-upstream!
-  "Push to a named upstream repository and rebase the paired normal
-  branches"
+(defn push-revert-upstream!
+  "Push to a named upstream repository and revert the divergent paired
+  normal branches to upstream."
   [ref proxy upstream-name]
   (go (let [_ (a/<! (push-upstream! ref proxy upstream-name))]
-        (rr/swap-step! ref :diff rebase-pairs upstream-name))))
+        (rr/swap-step! ref :step revert-divergent-pairs upstream-name))))
 
 (defn auto-pull-rebase-upstream!
   "Set up ref to automatically pull changes published from an upstream."
@@ -137,15 +158,24 @@
     (go-loop []
       (when-some [diff (a/<! ch)]
         (swap-upstream-diff! ref diff upstream-name)
-        (rr/swap-step! ref :diff rebase-pairs upstream-name)
+        (rr/swap-step! ref :step rebase-pairs upstream-name)
         (recur)))
     ref))
 
 (defn auto-push-upstream!
   "Set up ref to automatically push changes to upstream."
   [ref proxy upstream-name]
-  (let [ch (rr/listen! ref :diff)]
+  (let [ch (rr/listen! ref :step)]
     (go-loop []
       (when-some [step (a/<! ch)]
         (a/<! (push-upstream! ref proxy upstream-name))
+        (recur)))))
+
+(defn auto-push-revert-upstream!
+  "Set up ref to automatically push changes to upstream and revert."
+  [ref proxy upstream-name]
+  (let [ch (rr/listen! ref :step)]
+    (go-loop []
+      (when-some [step (a/<! ch)]
+        (a/<! (push-revert-upstream! ref proxy upstream-name))
         (recur)))))
