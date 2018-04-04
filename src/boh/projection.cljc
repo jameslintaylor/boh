@@ -2,26 +2,57 @@
   (:require [boh.repository :as r]
             [boh.repository-reference :as rr]
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
-               :cljs [cljs.core.async :as a]))
+               :cljs [cljs.core.async :as a])
+            #?(:clj [boh.util :refer [do-with]]))
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]
                             [boh.util :refer [do-with]])))
 
-(defn projection [ref branch reducing-fn]
-  (let [*v (atom (reducing-fn) :meta {:tag nil})
-        *cache (volatile! {})
-        ch (rr/listen! ref :step :upstream-step)]
-    (go-loop []
-      (let [{:keys [repo-before diff repo-after]} (a/<! ch)]
-        (when-some [new-head (get-in diff [:heads branch])]
-          (let [cache @*cache
-                blocks (-> (into []
-                                 (take-while (comp (complement cache) :hash))
-                                 (r/traverse repo-after new-head))
-                           (reverse))
-                cached (get cache (:prev (first blocks)))]
-            (when (some? blocks)
-              (vswap! *cache assoc new-head
-                      (reset! *v (transduce (map :data) reducing-fn
-                                            (or cached (reducing-fn)) blocks))))))
-        (recur)))
-    *v))
+(defn reduce-audit
+  ([rf coll] (reduce-audit rf (rf) coll))
+  ([rf init coll]
+   (loop [c (seq coll)
+          a init
+          trail (transient [])]
+     (if-not c
+       (persistent! trail)
+       (let [nval (rf a (first c))]
+         (if (reduced? nval)
+           (persistent! (conj! trail @nval))
+           (recur (next c) nval (conj! trail nval))))))))
+
+(defrecord Frame [prev image hash])
+
+(defn frames [cache repo xform data-rf head]
+  (let [chain (->> (r/traverse repo head)
+                   (take-while (comp (complement cache) :hash))
+                   (reverse))
+        base (:prev (first chain))
+        block-rf ((comp (map :data) xform) data-rf)
+        imgs (reduce-audit block-rf (or (get-in cache [base :image])
+                                      (block-rf)) chain)]
+    (into {} (map (fn [{:keys [hash prev]} img]
+                    [hash (->Frame prev img hash)])
+                  chain imgs))))
+
+(defn update-frames [fs heads repo xform data-rf]
+  (apply merge fs (map #(frames fs repo xform data-rf (second %)) heads)))
+
+(defn projection-xf [xform data-rf]
+  (let [*fs (volatile! {})]
+    (fn [rf]
+      (fn
+        ([] (rf))
+        ([a] (rf a))
+        ([a {:keys [diff repo-after]}]
+         (let [fs (vswap! *fs update-frames (:heads diff) repo-after xform data-rf)]
+           (rf a {:heads (:heads repo-after)
+                  :frames fs})))))))
+
+(defn projection!
+  "Return a channel of projections of a ref with the given reducing-fn.
+  Optionally pass a transducer to wrap the reducing-fn."
+  [ref xform reducing-fn]
+  (let [listen-ch (rr/listen! ref :step :upstream-step)
+        xf (projection-xf xform reducing-fn)]
+    (do-with [ch (a/chan)]
+      (a/pipeline 1 ch xf listen-ch))))

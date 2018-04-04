@@ -1,8 +1,13 @@
-html, * {
-    background-color: white;
+html {
+    background-color: #ddd;
     color: black;
     margin: 0;
     font-family: 'Fira Mono';
+}
+
+input {
+    font-family: 'Fira Mono';
+    border: 2px inset white;
 }
 
 #container {
@@ -15,16 +20,138 @@ html, * {
     align-items: center;
 }
 
-#compose {
-    width: 800px;
-    height: 300px;
-    color: #666;
-    background-color: #fff;
-    border: none;
-    font-size: 22px;
-    transition: background-color 0.2s;
+#upstream-area {
+    width: 320px;
+    height: 306px;
+    font-size: 14px;
 }
 
-#compose:hover, #compose:focus {
+.upstream {
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    color: #555;
+}
+
+.upstream-name {
+    width: 70px;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upstream-url > input{
+    width: 150px;
+    margin-left: 2px;
+}
+
+#upstream-area button {
+    padding: 0;
+    margin-left: 3px;
+    width: 20px;
+    border: 2px outset white;
+    font-weight: bold;
+    color: #555;
+}
+
+#upstream-area button.active {
+    color: green;
+    border: 2px inset white;
+    animation: active-pulse 3s infinite;
+}
+
+#new-upstream {
+    display: flex;
+}
+
+#new-upstream > input {
+    margin-left: 3px;
     background-color: #eee;
+    color: #555;
+    flex-grow: 1;
+    font-weight: bold;
+}
+
+#room-area {
+    height: 306px;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+#branches-area {
+    margin-left: 10px;
+    height: 306px;
+}
+
+#branches-area > input {
+    width: 100px;
+}
+
+#me > input {
+    width: 100px;
+    font-weight: bold;
+}
+
+#me > input:hover, #me > input:focus {
+    background-color: #eee;
+}
+
+#color-selector {
+    width: 20px;
+    margin-left: 4px;
+    cursor: pointer;
+}
+
+#color-selector:hover {
+    background-color: white;
+}
+
+#text-area {
+    width: 200px;
+    height: 300px;
+    margin-left: 10px;
+    color: #666;
+    cursor: text;
+    border: 2px inset white;
+    outline: 0;
+    white-space: pre-wrap;
+}
+
+#text-area:hover, #text-area:focus {
+    background-color: #eee;
+}
+
+#text-area:hover > .subs {
+    background-color: #eee;
+}
+
+#text-area:focus > .subs {
+    background-color: #eee;
+}
+
+#cursor {
+    color: white;
+    background-color: black;
+    /* animation: cursor-blink 1s infinite; */
+    /* animation-timing-function: steps(1, end); */
+}
+
+.cursor-popup {
+    display: none;
+    font-weight: bold;
+}
+
+#cursor:hover > .cursor-popup{
+    display: inline;
+}
+
+@keyframes active-pulse {
+    0% { color: black; background-color: #eee; }
+    50% { color: #f00; background-color: #cfd; }
+    100% { color: black; background-color: #eee; }
+}
+
+@keyframes cursor-blink {
+    0% { color: white; background-color: black; }
+    50% { color: black; background-color: white; }
 }

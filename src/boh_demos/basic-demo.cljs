@@ -12,7 +12,7 @@
 (def remote (sente-proxy "127.0.0.1:3000"))
 (defonce *repo (rr/make-ref))
 (defonce *branch (atom nil))
-(defonce *p (p/projection *repo :-/master str))
+(defonce *p (p/projections! *repo (map identity) str))
 
 (defn display-hash [hash]
   (if (nil? hash)

@@ -184,10 +184,10 @@
 (defn commit
   "Move a branches head forward by computing a block for the data and
   then grafting it to the branch."
-  [repo branch data]
+  [repo branch & data]
   (let [hash (resolve-ref repo branch)
-        block (b/hash-block hash data)]
-    (graft-block repo branch block)))
+        chain (apply b/chain-data hash data)]
+    (graft-chain repo branch chain)))
 
 (defn branch-point
   "Find the branch-point (the greatest common ancestor) between two

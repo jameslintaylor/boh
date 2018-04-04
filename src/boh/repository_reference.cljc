@@ -53,10 +53,8 @@
       (-broadcast-event! ref event-type step))
     step))
 
-(defn commit!
-  ([ref data] (commit! ref :-/master data))
-  ([ref branch data]
-   (swap-step! ref :step r/commit branch data)))
+(defn commit! [ref branch & data]
+  (apply swap-step! ref :step r/commit branch data))
 
 (defn ordered-merge-fn
   "Combine multiple merge strategies into one by taking the result of

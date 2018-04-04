@@ -2,6 +2,7 @@
   (:require [clojure.string :as s]
             [boh.repository :as r]
             [boh.repository-proxy :as rp]
+            [boh.branches :as b]
             [boh.repository-reference :as rr]
             [boh.util :refer [surject-keys #?(:clj go-let)]]
             #?(:clj [clojure.core.async :as a :refer [go go-loop]]
@@ -92,6 +93,18 @@
     (reduce (fn [s [u n]] (r/join-step s r/upsert-branch n u))
             (r/identity-step repo) pairs)))
 
+(defn revert-divergent-pairs
+  "Like `revert-pairs` but only revert if the upstream is not a
+  ancestor of the normalized branch.."
+  [repo upstream-name]
+  (let [heads (:heads repo)
+        pairs (get (pairs heads) upstream-name)]
+    (reduce (fn [s [u n]]
+              (if (b/descendants? repo u n)
+                s
+                (r/join-step s r/upsert-branch n u)))
+            (r/identity-step repo) pairs)))
+
 (defn upstream-version
   [m upstream-name]
   (->> (select-upstreamed-keys m upstream-name)
@@ -131,11 +144,11 @@
         (swap-upstream-diff! ref upstream-diff upstream-name))))
 
 (defn push-revert-upstream!
-  "Push to a named upstream repository and revert the paired normal
-  branches to upstream."
+  "Push to a named upstream repository and revert the divergent paired
+  normal branches to upstream."
   [ref proxy upstream-name]
   (go (let [_ (a/<! (push-upstream! ref proxy upstream-name))]
-        (rr/swap-step! ref :step revert-pairs upstream-name))))
+        (rr/swap-step! ref :step revert-divergent-pairs upstream-name))))
 
 (defn auto-pull-rebase-upstream!
   "Set up ref to automatically pull changes published from an upstream."
