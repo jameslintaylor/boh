@@ -5,8 +5,29 @@ html {
     font-family: 'Fira Mono';
 }
 
+ul, li {
+    list-style-type: none;
+}
+
 input {
     font-family: 'Fira Mono';
+    border: 2px inset white;
+}
+
+button {
+    padding-left: 2px;
+    padding-right: 2px;
+    font-family: 'Fira Mono';
+    font-weight: bold;
+    border: 2px outset white;
+    color: #555;
+}
+
+.raised {
+    border: 2px outset white;
+}
+
+.lowered {
     border: 2px inset white;
 }
 
@@ -17,74 +38,86 @@ input {
     display: flex;
     flex-direction: row;
     justify-content: center;
-    align-items: center;
 }
 
-#upstream-area {
-    width: 320px;
-    height: 306px;
-    font-size: 14px;
-}
-
-.upstream {
-    margin-bottom: 3px;
+section {
+    height: 80%;
     display: flex;
-    align-items: center;
-    color: #555;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
-.upstream-name {
-    width: 70px;
-    font-weight: bold;
+.read-only {
+    opacity: 0.6;
+    pointer-events: none;
+    tab-index: -1;
+}
+
+#image-section {
+    display: flex;
+    flex-direction: row;
+}
+
+#branch-section {
+    width: 100px;
+}
+
+#branch-switcher {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#branch-list {
+    display: none;
+}
+
+#branch-list > .branch {
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: default;
 }
 
-.upstream-url > input{
-    width: 150px;
-    margin-left: 2px;
+#branch-list > .branch:hover {
+    background-color: #aaf;
 }
 
-#upstream-area button {
-    padding: 0;
-    margin-left: 3px;
-    width: 20px;
-    border: 2px outset white;
-    font-weight: bold;
-    color: #555;
+#branch-list > .branch:active {
+    background-color: #88a;
 }
 
-#upstream-area button.active {
-    color: green;
-    border: 2px inset white;
-    animation: active-pulse 3s infinite;
-}
-
-#new-upstream {
+#branch-switcher:hover > #branch-list {
     display: flex;
+    flex-direction: column;
 }
 
-#new-upstream > input {
-    margin-left: 3px;
-    background-color: #eee;
-    color: #555;
-    flex-grow: 1;
-    font-weight: bold;
+#branch-switcher > * {
+    text-align: left;
 }
 
-#room-area {
-    height: 306px;
-    margin-left: 10px;
-    font-weight: bold;
+#version-list {
+    width: 100%;
+    overflow-y: scroll;
 }
 
-#branches-area {
-    margin-left: 10px;
-    height: 306px;
+#version-list > li {
+    cursor: default;
+    color: gray;
+    padding: 2px;
 }
 
-#branches-area > input {
-    width: 100px;
+#version-list > li:hover {
+    background-color: #ccc;
+    color: black;
+    border: 2px outset white;
+}
+
+#version-list > li:hover::after {
+    content: " ⎇";
+}
+
+#version-list > li:active {
+    background-color: #bbb;
 }
 
 #me > input {
@@ -106,30 +139,25 @@ input {
     background-color: white;
 }
 
-#text-area {
+#text-section {
     width: 200px;
     height: 300px;
-    margin-left: 10px;
     color: #666;
     cursor: text;
-    border: 2px inset white;
     outline: 0;
     white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: scroll;
+    overflow-x: scroll;
+    resize: both;
 }
 
-#text-area:hover, #text-area:focus {
+#text-section:hover, #text-section:focus {
     background-color: #eee;
+    border-color: red;
 }
 
-#text-area:hover > .subs {
-    background-color: #eee;
-}
-
-#text-area:focus > .subs {
-    background-color: #eee;
-}
-
-#cursor {
+.cursor {
     color: white;
     background-color: black;
     /* animation: cursor-blink 1s infinite; */
@@ -143,6 +171,44 @@ input {
 
 #cursor:hover > .cursor-popup{
     display: inline;
+}
+
+#upstream-drawer {
+    margin: 3px;
+    padding: 2px;
+}
+
+#upstream-section.closed > #upstream-drawer {
+    display: none;
+}
+
+#upstream-section.open > #upstream-drawer {
+    display: block;
+}
+
+.upstream {
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    color: #555;
+}
+
+.upstream-name {
+    width: 70px;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upstream-url > input{
+    width: 150px;
+    margin-left: 2px;
+}
+
+#upstream-section button.active {
+    color: green;
+    border: 2px inset white;
+    animation: active-pulse 3s infinite;
 }
 
 @keyframes active-pulse {

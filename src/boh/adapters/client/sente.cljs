@@ -18,11 +18,11 @@
     (fn [event]
       (do-with [response-ch (a/chan)]
         (if (:open? @state-atom)
-          (send-fn event 1000 (partial a/put! response-ch))
+          (send-fn event 10000 (partial a/put! response-ch))
           (go-loop [] 
             (let [new-state (a/<! state-ch)]
               (if (:open? new-state)
-                (send-fn event 1000 (partial a/put! response-ch))
+                (send-fn event 10000 (partial a/put! response-ch))
                 (recur)))))))))
 
 (defn sente-proxy [host]

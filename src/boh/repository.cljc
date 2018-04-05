@@ -36,7 +36,7 @@
     :branch (get-in repo [:heads ref])
     :hash ref))
 
-(defn- -traverse [blocks hash]
+(defn -traverse [blocks hash]
   (when-some [block (get blocks hash)]
     (lazy-seq (cons block (-traverse blocks (:prev block))))))
 

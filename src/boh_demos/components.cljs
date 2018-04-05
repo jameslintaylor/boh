@@ -33,6 +33,9 @@
   (let [[t a & c] (ensure-attr cp)]
     (apply vector t (assoc-in a path v) c)))
 
+(defn class [cp classes]
+  (attr cp :class classes))
+
 (defn on-change-set [cp *a path]
   (letfn [(on-change [e]
             (let [new (target-value e)]
@@ -54,6 +57,12 @@
 (defn on-click [cp f]
   (attr cp :on-click f))
 
+(defn on-mouse-enter [cp f]
+  (attr cp :on-mouse-enter f))
+
+(defn on-mouse-out [cp f]
+  (attr cp :on-mouse-out f))
+
 (defn style [cp k v]
   (in-attr cp [:style k] v))
 
@@ -62,7 +71,6 @@
 
 (defn with-first-child [cp c]
   (let [[t a & cs] (ensure-attr cp)]
-    (println t a cs)
     (apply vector t a c cs)))
 
 (defn tooltip [cp text]

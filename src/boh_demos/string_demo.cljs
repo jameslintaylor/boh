@@ -1,6 +1,8 @@
 (ns boh-demos.string-demo
   (:require [rum.core :as rum]
+            [boh-demos.handlers :as h]
             [boh-demos.components :as c]
+            [boh.repository :as r]
             [boh.repository-reference :as rr]
             [boh.upstream :as u]
             [boh.projection :as p]
@@ -13,9 +15,12 @@
 (enable-console-print!)
 
 (defonce *repo (rr/make-ref))
-(defonce *branch (atom "master"))
-(defonce *me (atom nil))
-(defonce *upstreams (atom {"origin" {:host "127.0.0.1:3000"}}))
+(defonce *state
+  (atom {:me :no1
+         :branch "master"
+         :detached nil
+         :upstreams {"origin"    {:host "127.0.0.1:3000"}
+                     "jamesl.in" {:host "jamesl.in:3000"}}}))
 
 (def read-transit (partial transit/read (transit/reader :json)))
 (def write-transit (partial transit/write (transit/writer :json)))
@@ -30,96 +35,42 @@
   (let [proxy (sente-proxy host)]
     (u/auto-pull-rebase-upstream! *repo proxy name)
     (u/auto-push-revert-upstream! *repo proxy name)
-    (swap! *upstreams assoc-in [name :unsync] "diapers")))
+    (swap! *state assoc-in [:upstreams name :unsync] "diapers")))
 
 (defn toggle-sync! [name host]
-  (let [unsync (get-in @*upstreams [name :unsync])]
+  (let [unsync (get-in @*state [:upstreams name :unsync])]
     (if (nil? unsync)
       (sync! name host)
-      (swap! *upstreams update name dissoc :unsync))))
+      (swap! *state update-in [:upstreams name] dissoc :unsync))))
 
 (defn commit! [& events]
-  (apply rr/commit! *repo (u/branch-kw @*branch) (map write-transit events)))
+  (let [branch (:branch @*state)]
+    (apply rr/commit! *repo (u/branch-kw branch)
+           (map write-transit events))))
 
-(defn track-remote! [url name]
-  (let [proxy (sente-proxy url)]
-    (u/pull-upstream! *repo proxy name)
-    (u/auto-pull-rebase-upstream! *repo proxy name)
-    (u/auto-push-revert-upstream! *repo proxy name)))
+(def color-pool ["#282a2e" "#a54242" "#8c9440" "#de935f"
+                 "#5f819d" "#85678f" "#5e8d87" "#707880"])
 
-(rum/defc cursor-input
-  < rum/reactive
-  [*a path]
-  (let [value (get-in (rum/react *a) path)]
-    [:input
-     {:value (get-in @*a path)
-      :on-change (fn [e]
-                   (let [new (c/target-value e)]
-                     (swap! *a assoc-in path new)))}]))
-
-(defn upstream-control [upstream]
-  (let [[name {:keys [host unsync]}] upstream]
-    [:div.upstream {:keys name}
-     [:span.upstream-name name]
-     [:span "➩"]
-     [:span.upstream-url (cursor-input *upstreams [name :host])]
-     (-> [:button "⇂"] (c/on-click (partial pull! name host)))
-     (-> [:button "↿"] (c/on-click (partial push! name host)))
-     (-> [:button "⟲"]
-         (c/attr :class (if (some? unsync) ["active"] [])) 
-         (c/on-click (partial toggle-sync! name host)))
-     (-> [:button "✕"]
-         (c/on-click
-          (fn []
-            (swap! *upstreams dissoc name))))]))
-
-(rum/defc upstream-area < rum/reactive []
-  (let [upstreams (rum/react *upstreams)
-        add-upstream-fn (fn [e]
-                          (let [name (c/target-value e)]
-                            (swap! *upstreams assoc name {})))]
-    [:div#upstream-area
-     [:div#upstream-list
-      (map upstream-control upstreams)]
-     [:div#new-upstream
-      (-> [:input] (c/on-enter add-upstream-fn))
-      (-> [:button "➩"] (c/on-click add-upstream-fn))]]))
-
-(rum/defc branches-area [heads]
-  [:div#branches-area
-   [:input]
-   (for [[branch hash] heads]
-     (-> [:div.branch (name branch)]
-         (c/on-click (partial reset! *branch (name branch)))))])
-
-(rum/defc me-control < rum/reactive [room]
-  (let [me (rum/react *me)
-        my-color (or (get-in room [(keyword me) :color]) "gray")]
-    [:div#me
-     (-> [:input]
-         (c/style :color my-color)
-         (c/on-change-set *me [])
-         (c/on-enter
-          (fn [e]
-            (let [keycode (c/keycode e)
-                  name (c/target-value e)]
-              (commit! [:join name 0])))))
-     [:span#color-selector
-      {:style {:color my-color}}
-      "*"]]))
-
-(rum/defc room-list [room]
-  [:div#users-list
-   (for [[k {:keys [color]}] room]
-     [:div.user
-      {:key k
-       :style {:color color}}
-      (name k)])])
-
-(rum/defc room-area [room]
-  [:div#room-area
-   (me-control room)
-   (room-list room)])
+(rum/defc room-editor [me image]
+  (let [room (:room image)]
+    [:#room-editor
+     [:input
+      {:value (name me)
+       :on-key-down
+       (h/handler h/wrap-keycode
+                  (filter (comp (partial = 13) :keycode))
+                  h/wrap-target-value
+                  (fn [{:keys [target-value]}]
+                    (commit! [:join (keyword target-value)
+                              0 (rand-nth color-pool)])))
+       :on-change
+       (h/handler h/wrap-target-value
+                  (fn [{:keys [target-value]}]
+                    (swap! *state assoc :me (keyword target-value))))}]
+     (for [[user _] room]
+       (-> [:ul.user (name user)]
+           (c/attr :key user)
+           (c/on-click (partial swap! *state update :me user))))]))
 
 (defn cursor-character [text pos]
   (let [c (get text pos)]
@@ -128,8 +79,8 @@
       "\r" "↙"
       c)))
 
-(defn cursor-separated-text [s]
-  (let [{:keys [text room]} s]
+(defn cursor-separated-text [image]
+  (let [{:keys [text room]} image]
     (let [sorted-cursors (sort #(< (-> %1 second :pos)
                                    (-> %2 second :pos))
                                room)]
@@ -144,53 +95,139 @@
                        [k color (cursor-character text pos)])
                  (+ offset pos 1)))))))
 
-(defn handle-key-down! [pos e]
+(defn handle-key-down! [me pos e]
   (let [keycode (c/keycode e)]
     (case keycode
       8 (commit! [:delete (dec pos) pos]
-                 [:move :a (dec pos)])
+                 [:move me (dec pos)])
       13 (do (c/prevent-default e)
              (commit! [:insert "\r\n" pos]
-                      [:move :a (inc pos)]))
-      37 (commit! [:move :a (dec pos)])
-      39 (commit! [:move :a (inc pos)])
-      (prn "key down! " keycode pos))))
+                      [:move me (inc pos)]))
+      37 (commit! [:move me (dec pos)])
+      39 (commit! [:move me (inc pos)])
+      nil)))
 
-(defn handle-key-press! [pos e]
+(defn handle-key-press! [me pos e]
   (c/prevent-default e)
   (let [char (char (c/keycode e))]
     (commit! [:insert char pos]
-             [:move :a (inc pos)])))
+             [:move me (inc pos)])))
 
 (defn cursor [c]
   (let [[k color text] c]
-    [:span#cursor {:style {:background-color color}}
+    [:span.cursor {:style {:background-color color}}
      text
      [:.cursor-popup
       [:span {:style {:color color}} (name k)]]]))
 
-(rum/defc text-area [s]
-  [:div#text-area
-   {:tab-index 1
-    :on-key-down (partial handle-key-down! (get-in s [:room :a :pos]))
-    :on-key-press (partial handle-key-press! (get-in s [:room :a :pos]))}
-   (for [el (cursor-separated-text s)]
-     (if (string? el)
-       [:span.subs el]
-       (cursor el)))])
+(rum/defc text-editor [me image]
+  (let [pos (get-in image [:room me :pos])]
+    [:div#text-section.lowered
+     {:tab-index 1
+      :on-key-down (partial handle-key-down! me pos)
+      :on-key-press (partial handle-key-press! me pos)}
+     (for [x (cursor-separated-text image)]
+       (if (string? x)
+         [:span.subs x]
+         (cursor x)))]))
+
+(rum/defc image-section [state prepo]
+  (let [{:keys [me branch detached]} state
+        h (or detached (get-in prepo [:heads (u/branch-kw branch)]))
+        image (get-in prepo [:frames h :image])]
+    (-> [:section#image-section
+         (room-editor me image)
+         (text-editor me image)]
+        (c/class (when (some? detached) "read-only"))
+        (c/attr :disabled (some? detached)))))
+
+(defn upstream-control [upstream]
+  (let [[name {:keys [host unsync]}] upstream]
+    [:div.upstream {:key name}
+     [:span.upstream-name name]
+     [:span "➩"]
+     [:span.upstream-url
+      (-> [:input]
+          (c/attr :value host)
+          (c/on-change-set *state [:upstreams name :host]))]
+     (-> [:button "⇂"] (c/on-click (partial pull! name host)))
+     (-> [:button "↿"] (c/on-click (partial push! name host)))
+     (-> [:button "⟲"]
+         (c/attr :class (if (some? unsync) ["active"] []))
+         (c/on-click (partial toggle-sync! name host)))
+     (-> [:button "✕"]
+         (c/on-click
+          (fn []
+            (swap! *state update :upstreams dissoc name))))]))
+
+(rum/defcs upstream-section
+  < (rum/local false ::open?)
+  [cs state]
+  (let [*open? (::open? cs)
+        open? @*open?
+        upstreams (:upstreams state)
+        add-upstream-fn (fn [e]
+                          (let [name (c/target-value e)]
+                            (swap! *state assoc-in [:upstreams name] {})))]
+    [:section#upstream-section
+     {:class (if open? ["open"] ["closed"])}
+     (-> [:button#toggle-drawer-button
+          (if open? "◤" "◢")]
+         (c/on-click (partial swap! *open? not)))
+     #_[:button#toggle-drawer-button "⎇"]
+     [:div#upstream-drawer
+      [:div#upstream-list
+       (map upstream-control upstreams)]
+      [:div#new-upstream
+       (-> [:input] (c/on-enter add-upstream-fn))
+       (-> [:button "➩"] (c/on-click add-upstream-fn))]]]))
+
+(rum/defc version-list
+  ;; this does equality on an entire prepo, if performance becomes a
+  ;; concern, should probably just be comparing heads...
+  < rum/static
+  [branch prepo n]
+  [:#version-list
+   (for [h (into [] (comp (take n)
+                          (map :hash))
+                 (r/-traverse (:frames prepo)
+                              (get-in prepo [:heads (u/branch-kw branch)])))]
+     (-> [:li {:key h}
+          (subs (name h) 0 6)]
+         (c/on-click ;; this should decorate with value maybe...
+          (fn []
+            (rr/swap-step! *repo :step
+                           r/upsert-branch
+                           (u/branch-kw (name h))
+                           h)
+            (swap! *state assoc :branch (name h))))
+         (c/on-mouse-enter (partial swap! *state assoc :detached h))
+         (c/on-mouse-out (partial swap! *state assoc :detached nil))))])
+
+(rum/defc branch-section
+  [state prepo]
+  (let [{:keys [branch detached]} state
+        {:keys [heads frames]} prepo]
+    [:section#branch-section
+     [:#branch-switcher.raised
+      {:class (when (some? detached) "read-only")}
+      [:input {:value branch}]
+      [:#branch-list
+       (for [[b h] heads]
+         (let [n (name b)]
+           (when-not (= n state)
+             (-> [:ul.branch n]
+                 (c/on-click (partial swap! *state assoc :branch n))))))]]
+     (version-list branch prepo 10)]))
 
 (rum/defc root
   < rum/reactive
   [prepo]
-  (let [branch (rum/react *branch)
-        heads (:heads prepo)
-        head (get heads (u/branch-kw branch))
-        s (get-in prepo [:frames head :image])]
+  (let [state (rum/react *state)]
     [:div#container
-     (upstream-area)
-     (branches-area heads)
-     (text-area s)
-     (room-area (:room s))]))
+     (image-section state prepo)
+     (branch-section state prepo)
+     (upstream-section state)]))
 
 (defmulti apply-event (comp first second))
 
@@ -234,15 +271,15 @@
   ([s event]
    (apply-event [s event])))
 
-(let [p-ch (p/projection! *repo (map read-transit) rf)]
-  (go-loop []
-    (when-some [prepo (a/<! p-ch)]
-      (println (count (:frames prepo)) " frames")
-      (rum/mount (root prepo)
-                 (. js/document (getElementById "app")))
-      (recur)))
-  ;; initial mount
-  (a/put! p-ch {:heads {} :projections {}}))
+(defonce initial-mount
+  (let [p-ch (p/projection! *repo (map read-transit) rf)]
+    (go-loop []
+      (when-some [prepo (a/<! p-ch)]
+        (rum/mount (root prepo)
+                   (. js/document (getElementById "app")))
+        (recur)))
+    ;; initial mount
+    (a/put! p-ch {:heads {} :projections {}})))
 
 (defn on-js-reload []
-  (println "js reload"))
+  (println "js reloaded"))
