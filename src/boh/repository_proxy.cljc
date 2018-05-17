@@ -22,12 +22,3 @@
   (pull [proxy version])
   (push [proxy diff])
   (subscribe [proxy version]))
-
-;; an idea
-(defn wrap-push-strategy [proxy some-fn]
-  (reify RepositoryProxy
-    (pull [_ version] (pull proxy version))
-    (subscribe [_ version] (subscribe proxy version))
-    (push [_ diff]
-      ;; apply push strategy
-      )))
